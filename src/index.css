@@ -1,0 +1,140 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-optimal: #22C55E;
+  --color-stressed: #F59E0B;
+  --color-failed: #EF4444;
+  --color-accent: #0EA5E9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #EEF2F7;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+#root {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Status badge */
+.status-badge {
+  @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+}
+
+.status-optimal {
+  @apply bg-green-100 text-green-700;
+}
+
+.status-stressed {
+  @apply bg-amber-100 text-amber-700;
+}
+
+.status-failed {
+  @apply bg-red-100 text-red-700;
+}
+
+/* Panel */
+.panel {
+  @apply bg-white rounded-xl border border-grid-border shadow-sm;
+}
+
+/* Metric card */
+.metric-card {
+  @apply bg-slate-50 rounded-lg px-3 py-2 border border-slate-100;
+}
+
+/* Slider */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 4px;
+  background: #E2E8F0;
+  outline: none;
+  cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #0EA5E9;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Alarm pulse animation */
+@keyframes alarmPulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+  }
+
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
+}
+
+.alarm-pulse {
+  animation: alarmPulse 1s ease-in-out infinite;
+}
+
+/* Chat message */
+.chat-message {
+  @apply rounded-xl px-4 py-3 text-sm leading-relaxed;
+}
+
+.chat-message-ai {
+  @apply bg-slate-50 border border-slate-100 text-slate-700;
+}
+
+.chat-message-system {
+  @apply bg-sky-50 border border-sky-100 text-sky-800;
+}
+
+.chat-message-fault {
+  @apply bg-red-50 border border-red-200 text-red-800;
+}
+
+.chat-message-success {
+  @apply bg-green-50 border border-green-200 text-green-800;
+}
