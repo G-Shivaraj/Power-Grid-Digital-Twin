@@ -1,6 +1,6 @@
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Text, Billboard, useGLTF, Center, Resize } from '@react-three/drei';
+import { Text, Billboard, useGLTF, Resize } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGridStore } from '../../../store/gridStore';
 
@@ -40,11 +40,9 @@ function FactoryModel({ node }) {
 
   return (
     <group>
-      <Center bottom>
-        <Resize scale={3.5}>
-          <primitive object={clonedScene} />
-        </Resize>
-      </Center>
+      <Resize scale={7.0}>
+        <primitive object={clonedScene} />
+      </Resize>
       <group ref={smokeRef} position={[0, 3.5, -0.5]}>
         {[0, 1].map((i) => (
           <mesh key={i} position={[(i - 0.5) * 1.2, 0, 0]}>
@@ -91,10 +89,10 @@ export default function FactoryNode({ node }) {
         </mesh>
       )}
       <Billboard position={[0, 4.5, 0]}>
-        <Text fontSize={0.33} color="#1E293B" anchorX="center" anchorY="middle" outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.33} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>
-        <Text fontSize={0.26} color="#EF4444" anchorX="center" anchorY="middle" position={[0, -0.43, 0]}>
+        <Text fontSize={0.26} color="#b91c1c" fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -0.43, 0]} outlineWidth={0.02} outlineColor="white">
           {`⚡ ${node.industrialLoad} MW  PF: ${node.powerFactor}`}
         </Text>
       </Billboard>

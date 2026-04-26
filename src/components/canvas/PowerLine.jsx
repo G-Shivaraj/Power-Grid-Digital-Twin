@@ -1,6 +1,6 @@
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useGLTF, Center, Resize } from '@react-three/drei';
+import { useGLTF, Resize } from '@react-three/drei';
 import * as THREE from 'three';
 
 const STATUS_LINE_COLORS = {
@@ -19,6 +19,14 @@ function PowerlineTower({ position, rotation = 0 }) {
       if (child.isMesh) {
         child.castShadow = true;
         child.receiveShadow = true;
+        if (child.material) {
+          child.material = child.material.clone();
+          child.material.color = new THREE.Color('#f8fafc'); // bright white-gray
+          child.material.emissive = new THREE.Color('#f8fafc');
+          child.material.emissiveIntensity = 0.15;
+          child.material.metalness = 0.7;
+          child.material.roughness = 0.2;
+        }
       }
     });
     return clone;
@@ -26,11 +34,9 @@ function PowerlineTower({ position, rotation = 0 }) {
 
   return (
     <group position={position} rotation={[0, rotation, 0]}>
-      <Center bottom>
-        <Resize scale={1.5}>
-          <primitive object={clonedScene} />
-        </Resize>
-      </Center>
+      <Resize scale={3.0}>
+        <primitive object={clonedScene} />
+      </Resize>
     </group>
   );
 }
@@ -47,8 +53,10 @@ export default function PowerLine({ line, fromPos, toPos }) {
   const curve = useMemo(() => {
     const from = new THREE.Vector3(...fromPos);
     const to = new THREE.Vector3(...toPos);
+    from.y = 2.0;
+    to.y = 1.0;
     const mid = from.clone().lerp(to, 0.5);
-    mid.y += 1.2;
+    mid.y = 3.8;
     return new THREE.QuadraticBezierCurve3(from, mid, to);
   }, [fromPos[0], fromPos[1], fromPos[2], toPos[0], toPos[1], toPos[2]]);
 
@@ -69,12 +77,7 @@ export default function PowerLine({ line, fromPos, toPos }) {
   }, [fromPos[0], fromPos[1], fromPos[2], toPos[0], toPos[1], toPos[2]]);
 
   useFrame((_, delta) => {
-    if (tubeRef.current) {
-      tubeRef.current.material.emissive = lineColor;
-      tubeRef.current.material.emissiveIntensity = line.status === 'failed'
-        ? 0.6 + Math.sin(Date.now() * 0.01) * 0.4
-        : line.status === 'stressed' ? 0.5 : 0.25;
-    }
+    // Particles movement logic
     const speed = 0.35 + line.loadRatio * 0.5;
     const dir = line.powerFlowDirection ?? 1;
     offsetsRef.current = offsetsRef.current.map(o => {
@@ -100,24 +103,20 @@ export default function PowerLine({ line, fromPos, toPos }) {
         <PowerlineTower key={`tower-${line.id}-${i}`} position={tower.position} rotation={tower.rotation} />
       ))}
       <mesh ref={tubeRef}>
-        <tubeGeometry args={[curve, 40, 0.055, 6, false]} />
+        <tubeGeometry args={[curve, 40, 0.015, 6, false]} />
         <meshStandardMaterial
-          color={lineColor}
-          emissive={lineColor}
-          emissiveIntensity={0.3}
-          transparent
-          opacity={0.85}
-          metalness={0.3}
-          roughness={0.5}
+          color="#374151"
+          metalness={0.6}
+          roughness={0.4}
         />
       </mesh>
       {isActive && Array.from({ length: PARTICLE_COUNT }).map((_, i) => (
         <mesh key={i} ref={el => { particlesRef.current[i] = el; }}>
           <sphereGeometry args={[0.085, 6, 6]} />
           <meshStandardMaterial
-            color={lineColor}
-            emissive={lineColor}
-            emissiveIntensity={2.5}
+            color="#FF6B6B"
+            emissive="#FF6B6B"
+            emissiveIntensity={0.0}
           />
         </mesh>
       ))}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGridStore } from '../../store/gridStore';
-import { Activity, Zap, Sun, AlertTriangle, CheckCircle, Radio } from 'lucide-react';
+import { Activity, Zap, Sun, AlertTriangle, CheckCircle, Radio, Maximize2, Minimize2 } from 'lucide-react';
 
 function Metric({ icon: Icon, label, value, unit, color = 'text-grid-text' }) {
   return (
@@ -17,6 +17,8 @@ export default function StatusBar() {
   const simulation = useGridStore(s => s.simulation);
   const nodes = useGridStore(s => s.nodes);
   const factory = useGridStore(s => s.factory);
+  const isFullscreen = useGridStore(s => s.isFullscreen);
+  const toggleFullscreen = useGridStore(s => s.toggleFullscreen);
   const solarNode = nodes.solarFarm;
 
   const faultActive = simulation.faultActive;
@@ -53,6 +55,17 @@ export default function StatusBar() {
         {faultActive ? <AlertTriangle size={12} /> : <CheckCircle size={12} />}
         {overallStatus}
       </div>
+
+      <div className="h-5 w-px bg-grid-border ml-2" />
+
+      {/* Fullscreen Toggle */}
+      <button 
+        onClick={toggleFullscreen}
+        className="p-1.5 text-grid-muted hover:text-grid-text hover:bg-black/5 rounded transition-colors"
+        title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+      >
+        {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+      </button>
     </header>
   );
 }

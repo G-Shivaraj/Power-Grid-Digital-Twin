@@ -20,21 +20,21 @@ const INITIAL_NODES = {
   },
   residential1: {
     id: 'residential1', label: 'District Alpha', type: 'load',
-    position: [15, 0, -4],
+    position: [15, 0, -15],
     voltage: 1.0, activePower: 0, reactivePower: 0,
     baseDemand: 8, actualDemand: 8, status: 'optimal',
     description: 'Residential zone A — 2,400 homes and light commercial.',
   },
   residential2: {
     id: 'residential2', label: 'District Beta', type: 'load',
-    position: [10, 0, 15],
+    position: [10, 0, 23],
     voltage: 1.0, activePower: 0, reactivePower: 0,
     baseDemand: 10, actualDemand: 10, status: 'optimal',
     description: 'Residential zone B — 3,100 homes and mixed commercial.',
   },
   residential3: {
     id: 'residential3', label: 'District Gamma', type: 'load',
-    position: [-15, 0, 10],
+    position: [-15, 0, 15],
     voltage: 1.0, activePower: 0, reactivePower: 0,
     baseDemand: 7, actualDemand: 7, status: 'optimal',
     description: 'Residential zone C — 2,000 homes near solar farm.',
@@ -78,6 +78,10 @@ export const useGridStore = create(
       recommendation: null,
       capacitorDeployed: false,
     },
+    isFullscreen: false,
+
+    // ── Fullscreen mode ─────────────────────────────────────────────────────
+    toggleFullscreen: () => set((state) => ({ isFullscreen: !state.isFullscreen })),
 
     // ── Node selection ──────────────────────────────────────────────────────
     selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
@@ -209,6 +213,7 @@ export const useGridStore = create(
       selectedNodeId: null,
       placementMode: false,
       history: [],
+      isFullscreen: false,
       aiAdvisor: { messages: [], isAnalyzing: false, recommendation: null, capacitorDeployed: false },
     }),
   }))

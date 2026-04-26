@@ -1,6 +1,6 @@
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Text, Billboard, useGLTF, Center, Resize } from '@react-three/drei';
+import { Text, Billboard, useGLTF, Resize } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGridStore } from '../../../store/gridStore';
 
@@ -34,11 +34,9 @@ function HousesModel({ node }) {
 
   return (
     <group>
-      <Center bottom>
-        <Resize scale={2.5}>
-          <primitive object={clonedScene} />
-        </Resize>
-      </Center>
+      <Resize scale={7.0}>
+        <primitive object={clonedScene} />
+      </Resize>
       {/* Street lamp */}
       <mesh position={[1.0, 0.5, 0.8]}>
         <cylinderGeometry args={[0.02, 0.02, 1.0, 6]} />
@@ -88,11 +86,11 @@ export default function ResidentialNode({ node }) {
         </mesh>
       )}
 
-      <Billboard position={[0, 2.5, 0]}>
-        <Text fontSize={0.30} color="#1E293B" anchorX="center" anchorY="middle" outlineWidth={0.02} outlineColor="white">
+      <Billboard position={[0, 3.5, 0]}>
+        <Text fontSize={0.30} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>
-        <Text fontSize={0.25} color={STATUS_COLORS[node.status]?.getStyle?.()} anchorX="center" anchorY="middle" position={[0, -0.40, 0]}>
+        <Text fontSize={0.25} color={node.status === 'failed' ? '#b91c1c' : '#15803d'} fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -0.40, 0]} outlineWidth={0.02} outlineColor="white">
           {node.status === 'failed' ? '⚠ BLACKOUT' : `${(node.voltage * 100).toFixed(1)}% | ${node.baseDemand} MW`}
         </Text>
       </Billboard>

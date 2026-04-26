@@ -21,6 +21,42 @@ function GroundPlane({ onClick }) {
   );
 }
 
+// ── Solid Base (Soil with Texture) ────────────────────────────────────────
+function SolidGround() {
+  const soilTexture = React.useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    
+    // Base soil color
+    ctx.fillStyle = '#573704';
+    ctx.fillRect(0, 0, 512, 512);
+    
+    // Add dirt noise
+    for (let i = 0; i < 40000; i++) {
+      ctx.fillStyle = Math.random() > 0.5 ? '#3e2703' : '#714805';
+      const x = Math.random() * 512;
+      const y = Math.random() * 512;
+      const size = Math.random() * 2 + 1;
+      ctx.fillRect(x, y, size, size);
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(40, 40); // Tile it across the large plane
+    return texture;
+  }, []);
+
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
+      <planeGeometry args={[200, 200]} />
+      <meshStandardMaterial map={soilTexture} roughness={1.0} metalness={0.0} />
+    </mesh>
+  );
+}
+
 // ── Grid decoration ────────────────────────────────────────────────────────
 function GridDecoration() {
   return (
@@ -28,13 +64,13 @@ function GridDecoration() {
       args={[100, 100]}
       cellSize={2}
       cellThickness={0.5}
-      cellColor="#CBD5E1"
+      cellColor="#65a30d"
       sectionSize={8}
       sectionThickness={1}
-      sectionColor="#94A3B8"
+      sectionColor="#3f6212"
       fadeDistance={100}
       fadeStrength={2}
-      position={[0, -0.005, 0]}
+      position={[0, -0.04, 0]}
     />
   );
 }
@@ -62,6 +98,7 @@ function Scene() {
       <directionalLight position={[-10, 10, -10]} intensity={0.4} color="#bfdbfe" />
 
       {/* Ground grid */}
+      <SolidGround />
       <GridDecoration />
 
       {/* Ground click handler */}
@@ -74,9 +111,9 @@ function Scene() {
       {/* Power lines */}
       {lines.map(line => {
         const fromNode = nodes[line.from] || (factory && factory.id === line.from ? factory : null)
-                       || (capacitor && capacitor.id === line.from ? capacitor : null);
-        const toNode   = nodes[line.to]   || (factory && factory.id === line.to   ? factory : null)
-                       || (capacitor && capacitor.id === line.to   ? capacitor : null);
+          || (capacitor && capacitor.id === line.from ? capacitor : null);
+        const toNode = nodes[line.to] || (factory && factory.id === line.to ? factory : null)
+          || (capacitor && capacitor.id === line.to ? capacitor : null);
         if (!fromNode || !toNode) return null;
         return (
           <PowerLine

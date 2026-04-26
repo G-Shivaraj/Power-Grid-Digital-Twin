@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { useGridStore } from '../../../store/gridStore';
 
 // Model raw size: 1.56 x 4.56 x 3.79, bounds Y=[0.04, 4.59] — already small, scale ~0.6
-const MODEL_SCALE = 0.6;
+const MODEL_SCALE = 0.9;
 
 function CapacitorModel() {
   const { scene } = useGLTF('/models/capacitor_bank.glb');
@@ -83,10 +83,10 @@ export default function CapacitorNode({ node }) {
         </mesh>
       )}
       <Billboard position={[0, 4.0, 0]}>
-        <Text fontSize={0.28} color="#1E293B" anchorX="center" anchorY="middle" outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.28} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>
-        <Text fontSize={0.22} color="#0EA5E9" anchorX="center" anchorY="middle" position={[0, -0.38, 0]}>
+        <Text fontSize={0.22} color="#0284c7" fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -0.38, 0]} outlineWidth={0.02} outlineColor="white">
           {`+${node.reactivePowerSupport} MVAR`}
         </Text>
       </Billboard>

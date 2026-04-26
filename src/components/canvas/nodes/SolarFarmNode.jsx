@@ -1,6 +1,6 @@
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Text, Billboard, useGLTF, Center, Resize } from '@react-three/drei';
+import { Text, Billboard, useGLTF, Resize } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGridStore } from '../../../store/gridStore';
 
@@ -46,11 +46,9 @@ function SolarModel({ node }) {
 
   return (
     <group ref={groupRef}>
-      <Center bottom>
-        <Resize scale={4.0}>
-          <primitive object={clonedScene} />
-        </Resize>
-      </Center>
+      <Resize scale={8.0}>
+        <primitive object={clonedScene} />
+      </Resize>
       {/* Output indicator */}
       <mesh position={[0, 2.5, 0]}>
         <sphereGeometry args={[0.18, 10, 10]} />
@@ -95,11 +93,11 @@ export default function SolarFarmNode({ node }) {
         </mesh>
       )}
 
-      <Billboard position={[0, 3.5, 0]}>
-        <Text fontSize={0.32} color="#1E293B" anchorX="center" anchorY="middle" outlineWidth={0.02} outlineColor="white">
+      <Billboard position={[0, 4.5, 0]}>
+        <Text fontSize={0.32} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>
-        <Text fontSize={0.26} color="#FBBF24" anchorX="center" anchorY="middle" position={[0, -0.42, 0]}>
+        <Text fontSize={0.26} color="#d97706" fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -0.42, 0]} outlineWidth={0.02} outlineColor="white">
           {`☀ ${node.solarOutput?.toFixed(1)} / ${node.maxSolarOutput} MW`}
         </Text>
       </Billboard>

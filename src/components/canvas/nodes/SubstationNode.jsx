@@ -1,6 +1,6 @@
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Text, Billboard, useGLTF, Center, Resize } from '@react-three/drei';
+import { Text, Billboard, useGLTF, Resize } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGridStore } from '../../../store/gridStore';
 
@@ -44,11 +44,33 @@ function SubstationModel({ status }) {
 
   return (
     <group ref={groupRef}>
-      <Center bottom>
-        <Resize scale={3.5}>
-          <primitive object={clonedScene} rotation={[0, 0, 0]} />
-        </Resize>
-      </Center>
+      <Resize scale={8.0}>
+        <primitive object={clonedScene} rotation={[0, 0, 0]} />
+      </Resize>
+      
+      {/* Substation Boundary Fence */}
+      <group position={[0, 0, 0]}>
+        {/* Front */}
+        <mesh position={[0, 0.4, 4.0]} receiveShadow castShadow>
+          <boxGeometry args={[8.2, 0.8, 0.1, 32, 4, 1]} />
+          <meshStandardMaterial color="#111827" roughness={0.9} wireframe={true} />
+        </mesh>
+        {/* Back */}
+        <mesh position={[0, 0.4, -4.0]} receiveShadow castShadow>
+          <boxGeometry args={[8.2, 0.8, 0.1, 32, 4, 1]} />
+          <meshStandardMaterial color="#111827" roughness={0.9} wireframe={true} />
+        </mesh>
+        {/* Right */}
+        <mesh position={[4.0, 0.4, 0]} receiveShadow castShadow>
+          <boxGeometry args={[0.1, 0.8, 8.0, 1, 4, 32]} />
+          <meshStandardMaterial color="#111827" roughness={0.9} wireframe={true} />
+        </mesh>
+        {/* Left */}
+        <mesh position={[-4.0, 0.4, 0]} receiveShadow castShadow>
+          <boxGeometry args={[0.1, 0.8, 8.0, 1, 4, 32]} />
+          <meshStandardMaterial color="#111827" roughness={0.9} wireframe={true} />
+        </mesh>
+      </group>
       {/* Status beacon */}
       <mesh position={[0, 3.5, 0]}>
         <sphereGeometry args={[0.22, 12, 12]} />
@@ -94,11 +116,11 @@ export default function SubstationNode({ node }) {
       )}
 
       {/* Label */}
-      <Billboard follow={true} lockX={false} lockY={false} lockZ={false} position={[0, 4.5, 0]}>
-        <Text fontSize={0.35} color="#1E293B" anchorX="center" anchorY="middle" outlineWidth={0.02} outlineColor="white">
+      <Billboard follow={true} lockX={false} lockY={false} lockZ={false} position={[0, 9.0, 0]}>
+        <Text fontSize={0.35} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>
-        <Text fontSize={0.28} color={node.voltage >= 0.95 ? '#22C55E' : '#EF4444'} anchorX="center" anchorY="middle" position={[0, -0.45, 0]}>
+        <Text fontSize={0.28} color={node.voltage >= 0.95 ? '#15803d' : '#b91c1c'} fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -0.45, 0]} outlineWidth={0.02} outlineColor="white">
           {`${(node.voltage * 100).toFixed(1)}% | ${node.activePower?.toFixed(1)} MW`}
         </Text>
       </Billboard>
