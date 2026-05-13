@@ -105,7 +105,7 @@ export default function RMUNode({ node }) {
           <meshBasicMaterial color="#0EA5E9" transparent opacity={0.8} />
         </mesh>
       )}
-      <Billboard position={[0, 9.5, 0]}>
+      <Billboard position={[0, 5.8, 0]}>
         <Text fontSize={0.32} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>

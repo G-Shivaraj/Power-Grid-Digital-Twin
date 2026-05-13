@@ -94,7 +94,7 @@ const INITIAL_NODES = {
   },
   rmu_north: {
     id: 'rmu_north', label: 'RMU North-A', type: 'rmu', layer: 3,
-    position: [0, 0, 16],
+    position: [0, 0, 10],
     fault_current_detected_amps: 0,
     isolation_switch_state: false,
     telemetry_latency_ms: 12,
@@ -103,7 +103,7 @@ const INITIAL_NODES = {
   },
   rmu_east: {
     id: 'rmu_east', label: 'RMU East-A', type: 'rmu', layer: 3,
-    position: [20, 0, 14],
+    position: [20, 0, 10],
     fault_current_detected_amps: 0,
     isolation_switch_state: false,
     telemetry_latency_ms: 8,
@@ -154,24 +154,24 @@ const INITIAL_NODES = {
 
 const INITIAL_LINES = [
   // Layer 1 → 2: HV Transmission Corridors (220kV)
-  { id: 'hv-coal-sub',   from: 'coalPlant',    to: 'hvSubstation', voltageLevel: 'hv',  resistance: 0.02, thermalLimit: 250, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1,  conductor_temp_celsius: 45, line_sag_meters: 8.2, apparent_power_mva: 0 },
-  { id: 'hv-solar-sub',  from: 'solarFarm',    to: 'hvSubstation', voltageLevel: 'hv',  resistance: 0.03, thermalLimit: 60,  currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: -1, conductor_temp_celsius: 38, line_sag_meters: 6.1, apparent_power_mva: 0 },
-  { id: 'hv-gas-sub',    from: 'gasStabilizer',to: 'hvSubstation', voltageLevel: 'hv',  resistance: 0.025,thermalLimit: 90,  currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1,  conductor_temp_celsius: 35, line_sag_meters: 5.5, apparent_power_mva: 0 },
+  { id: 'hv-coal-sub', from: 'coalPlant', to: 'hvSubstation', voltageLevel: 'hv', resistance: 0.02, thermalLimit: 250, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1, conductor_temp_celsius: 45, line_sag_meters: 8.2, apparent_power_mva: 0 },
+  { id: 'hv-solar-sub', from: 'solarFarm', to: 'hvSubstation', voltageLevel: 'hv', resistance: 0.03, thermalLimit: 60, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: -1, conductor_temp_celsius: 38, line_sag_meters: 6.1, apparent_power_mva: 0 },
+  { id: 'hv-gas-sub', from: 'gasStabilizer', to: 'hvSubstation', voltageLevel: 'hv', resistance: 0.025, thermalLimit: 90, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1, conductor_temp_celsius: 35, line_sag_meters: 5.5, apparent_power_mva: 0 },
   // Layer 2 → 3: Sub-Transmission (33kV)
-  { id: 'sub-zone-north',from: 'hvSubstation', to: 'zoneSub_north', voltageLevel: 'sub', resistance: 0.04, thermalLimit: 80, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
-  { id: 'sub-zone-east', from: 'hvSubstation', to: 'zoneSub_east',  voltageLevel: 'sub', resistance: 0.05, thermalLimit: 80, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
-  { id: 'sub-zone-west', from: 'hvSubstation', to: 'zoneSub_west',  voltageLevel: 'sub', resistance: 0.04, thermalLimit: 80, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
-  { id: 'sub-industry',  from: 'hvSubstation', to: 'heavyIndustry', voltageLevel: 'sub', resistance: 0.03, thermalLimit: 50, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
+  { id: 'sub-zone-north', from: 'hvSubstation', to: 'zoneSub_north', voltageLevel: 'sub', resistance: 0.04, thermalLimit: 80, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
+  { id: 'sub-zone-east', from: 'hvSubstation', to: 'zoneSub_east', voltageLevel: 'sub', resistance: 0.05, thermalLimit: 80, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
+  { id: 'sub-zone-west', from: 'hvSubstation', to: 'zoneSub_west', voltageLevel: 'sub', resistance: 0.04, thermalLimit: 80, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
+  { id: 'sub-industry', from: 'hvSubstation', to: 'heavyIndustry', voltageLevel: 'sub', resistance: 0.03, thermalLimit: 50, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
   // Layer 3: Distribution feeders (11kV) + ring tie
-  { id: 'north-rmu-n',   from: 'zoneSub_north',to: 'rmu_north',    voltageLevel: 'dist',resistance: 0.06, thermalLimit: 40, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
-  { id: 'east-rmu-e',    from: 'zoneSub_east', to: 'rmu_east',     voltageLevel: 'dist',resistance: 0.06, thermalLimit: 40, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
-  { id: 'ring-tie',      from: 'zoneSub_north',to: 'zoneSub_east', voltageLevel: 'dist',resistance: 0.05, thermalLimit: 30, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 0, isRingTie: true },
+  { id: 'north-rmu-n', from: 'zoneSub_north', to: 'rmu_north', voltageLevel: 'dist', resistance: 0.06, thermalLimit: 40, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
+  { id: 'east-rmu-e', from: 'zoneSub_east', to: 'rmu_east', voltageLevel: 'dist', resistance: 0.06, thermalLimit: 40, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
+  { id: 'ring-tie', from: 'zoneSub_north', to: 'zoneSub_east', voltageLevel: 'dist', resistance: 0.05, thermalLimit: 30, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 0, isRingTie: true },
   // Layer 3 → 4: 11kV → 400V
-  { id: 'rmu-n-alpha',   from: 'rmu_north',    to: 'distTransformer_alpha', voltageLevel: 'dist', resistance: 0.07, thermalLimit: 25, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
-  { id: 'rmu-e-beta',    from: 'rmu_east',     to: 'distTransformer_beta',  voltageLevel: 'dist', resistance: 0.07, thermalLimit: 25, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
+  { id: 'rmu-n-alpha', from: 'rmu_north', to: 'distTransformer_alpha', voltageLevel: 'dist', resistance: 0.07, thermalLimit: 25, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
+  { id: 'rmu-e-beta', from: 'rmu_east', to: 'distTransformer_beta', voltageLevel: 'dist', resistance: 0.07, thermalLimit: 25, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
   // Layer 4: LV (400V)
-  { id: 'alpha-res',     from: 'distTransformer_alpha', to: 'smartMeter_residential', voltageLevel: 'lv', resistance: 0.1, thermalLimit: 20, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
-  { id: 'beta-hosp',     from: 'distTransformer_beta',  to: 'smartMeter_hospital',    voltageLevel: 'lv', resistance: 0.08,thermalLimit: 18, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
+  { id: 'alpha-res', from: 'distTransformer_alpha', to: 'smartMeter_residential', voltageLevel: 'lv', resistance: 0.1, thermalLimit: 20, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
+  { id: 'beta-hosp', from: 'distTransformer_beta', to: 'smartMeter_hospital', voltageLevel: 'lv', resistance: 0.08, thermalLimit: 18, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
 ];
 
 const INITIAL_SIMULATION = {
