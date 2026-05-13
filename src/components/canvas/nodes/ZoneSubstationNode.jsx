@@ -11,8 +11,8 @@ const STATUS_COLORS = {
 };
 
 const BREAKER_COLORS = {
-  CLOSED:  new THREE.Color('#22C55E'),
-  OPEN:    new THREE.Color('#6B7280'),
+  CLOSED: new THREE.Color('#22C55E'),
+  OPEN: new THREE.Color('#6B7280'),
   TRIPPED: new THREE.Color('#EF4444'),
 };
 
@@ -28,8 +28,27 @@ function ZoneSubModel({ node }) {
         child.receiveShadow = true;
         if (child.material) {
           child.material = child.material.clone();
-          child.material.emissive = breakerColor;
-          child.material.emissiveIntensity = 0.12;
+          const name = child.name.toLowerCase();
+
+          // Apply lovely high-contrast industrial materials for superb visual fidelity
+          if (name.includes('ground') || name.includes('pad') || name.includes('base') || name.includes('plane') || name.includes('floor')) {
+            child.material.color = new THREE.Color('#64748B'); // Slate concrete pad
+            child.material.roughness = 0.9;
+            child.material.metalness = 0.1;
+            child.material.emissive = new THREE.Color('#000000');
+          } else if (name.includes('fence') || name.includes('wire') || name.includes('gate') || name.includes('wall')) {
+            child.material.color = new THREE.Color('#94A3B8'); // Galvanized steel fence
+            child.material.roughness = 0.4;
+            child.material.metalness = 0.8;
+            child.material.emissive = new THREE.Color('#000000');
+          } else {
+            // Zone transformers and switching structures
+            child.material.color = new THREE.Color('#334155'); // Deep slate industrial metal
+            child.material.roughness = 0.3;
+            child.material.metalness = 0.75;
+            child.material.emissive = breakerColor;
+            child.material.emissiveIntensity = 0.05;
+          }
         }
       }
     });
@@ -37,15 +56,15 @@ function ZoneSubModel({ node }) {
 
   return (
     <group>
-      <Resize scale={6.5}>
+      <Resize scale={10.0}>
         <primitive object={clonedScene} />
       </Resize>
       {/* Feeder breaker status indicator */}
-      <mesh position={[0, 5.0, 0]}>
-        <sphereGeometry args={[0.22, 12, 12]} />
+      <mesh position={[0, 6.8, 0]}>
+        <sphereGeometry args={[0.3, 12, 12]} />
         <meshStandardMaterial color={breakerColor} emissive={breakerColor} emissiveIntensity={2.5} />
       </mesh>
-      <pointLight position={[0, 4.0, 0]} color={breakerColor} intensity={1.5} distance={8} />
+      <pointLight position={[0, 5.8, 0]} color={breakerColor} intensity={1.5} distance={12} />
     </group>
   );
 }
@@ -74,11 +93,11 @@ export default function ZoneSubstationNode({ node }) {
       <ZoneSubModel node={node} />
       {isSelected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-          <ringGeometry args={[2.5, 2.9, 32]} />
+          <ringGeometry args={[3.8, 4.2, 32]} />
           <meshBasicMaterial color="#0EA5E9" transparent opacity={0.8} />
         </mesh>
       )}
-      <Billboard position={[0, 10.5, 0]}>
+      <Billboard position={[0, 14.0, 0]}>
         <Text fontSize={0.34} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>

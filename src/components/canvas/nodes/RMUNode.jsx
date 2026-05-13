@@ -50,12 +50,12 @@ function RMUModel({ node }) {
 
   return (
     <group>
-      <Resize scale={5.0}>
+      <Resize scale={7.0}>
         <primitive object={clonedScene} />
       </Resize>
       {/* Isolation switch indicator */}
-      <mesh position={[0, 2.8, 0]}>
-        <boxGeometry args={[0.15, 0.6, 0.08]} />
+      <mesh position={[0, 4.0, 0]}>
+        <boxGeometry args={[0.2, 0.8, 0.1]} />
         <meshStandardMaterial
           color={switchColor}
           emissive={switchColor}
@@ -64,15 +64,15 @@ function RMUModel({ node }) {
         />
       </mesh>
       {/* Fault spark */}
-      <mesh position={[0, 3.5, 0]} ref={sparkRef} visible={false}>
-        <torusGeometry args={[0.18, 0.05, 6, 12]} />
+      <mesh position={[0, 5.0, 0]} ref={sparkRef} visible={false}>
+        <torusGeometry args={[0.25, 0.08, 6, 12]} />
         <meshStandardMaterial color="#FCD34D" emissive="#FCD34D" emissiveIntensity={4.0} />
       </mesh>
-      <mesh position={[0, 2.5, 0]}>
-        <sphereGeometry args={[0.14, 10, 10]} />
+      <mesh position={[0, 3.5, 0]}>
+        <sphereGeometry args={[0.20, 10, 10]} />
         <meshStandardMaterial color={switchColor} emissive={switchColor} emissiveIntensity={2.5} />
       </mesh>
-      <pointLight position={[0, 2.0, 0]} color={isIsolated ? '#EF4444' : '#22C55E'} intensity={isFaultHigh ? 4 : 1} distance={6} />
+      <pointLight position={[0, 2.8, 0]} color={isIsolated ? '#EF4444' : '#22C55E'} intensity={isFaultHigh ? 4 : 1} distance={10} />
     </group>
   );
 }
@@ -101,11 +101,11 @@ export default function RMUNode({ node }) {
       <RMUModel node={node} />
       {isSelected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-          <ringGeometry args={[1.8, 2.1, 32]} />
+          <ringGeometry args={[2.5, 2.8, 32]} />
           <meshBasicMaterial color="#0EA5E9" transparent opacity={0.8} />
         </mesh>
       )}
-      <Billboard position={[0, 7.0, 0]}>
+      <Billboard position={[0, 9.5, 0]}>
         <Text fontSize={0.32} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>

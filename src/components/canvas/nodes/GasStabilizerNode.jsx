@@ -23,11 +23,21 @@ function GasStabilizerModel({ node }) {
         child.receiveShadow = true;
         if (child.material) {
           child.material = child.material.clone();
-          // Dimmer when standby, bright orange when active
-          child.material.emissive = isStandby
-            ? new THREE.Color('#374151')
-            : new THREE.Color('#F97316');
-          child.material.emissiveIntensity = isStandby ? 0.05 : 0.4;
+          const name = child.name.toLowerCase();
+
+          if (name.includes('ground') || name.includes('pad') || name.includes('base')) {
+            child.material.color = new THREE.Color('#64748B');
+            child.material.roughness = 0.9;
+            child.material.metalness = 0.1;
+            child.material.emissive = new THREE.Color('#000000');
+          } else {
+            // Metallic turbines, piping, exhaust structures
+            child.material.color = new THREE.Color('#334155');
+            child.material.roughness = 0.3;
+            child.material.metalness = 0.75;
+            child.material.emissive = isStandby ? new THREE.Color('#374151') : new THREE.Color('#F97316');
+            child.material.emissiveIntensity = isStandby ? 0.02 : 0.25;
+          }
         }
       }
     });
@@ -48,18 +58,18 @@ function GasStabilizerModel({ node }) {
 
   return (
     <group>
-      <Resize scale={9.0}>
+      <Resize scale={11.0}>
         <primitive object={clonedScene} />
       </Resize>
-      <mesh position={[0, 4.0, 0]} ref={glowRef}>
-        <sphereGeometry args={[0.20, 12, 12]} />
+      <mesh position={[0, 4.8, 0]} ref={glowRef}>
+        <sphereGeometry args={[0.24, 12, 12]} />
         <meshStandardMaterial color={beaconColor} emissive={beaconColor} emissiveIntensity={isStandby ? 0.4 : 2.0} />
       </mesh>
       <pointLight
-        position={[0, 3.0, 0]}
+        position={[0, 3.8, 0]}
         color={isStandby ? '#6B7280' : '#F97316'}
         intensity={isStandby ? 0.5 : 3.0}
-        distance={12}
+        distance={14}
       />
     </group>
   );
@@ -90,11 +100,11 @@ export default function GasStabilizerNode({ node }) {
       <GasStabilizerModel node={node} />
       {isSelected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-          <ringGeometry args={[3.0, 3.4, 32]} />
+          <ringGeometry args={[3.8, 4.2, 32]} />
           <meshBasicMaterial color="#0EA5E9" transparent opacity={0.8} />
         </mesh>
       )}
-      <Billboard position={[0, 11.0, 0]}>
+      <Billboard position={[0, 12.8, 0]}>
         <Text fontSize={0.36} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>

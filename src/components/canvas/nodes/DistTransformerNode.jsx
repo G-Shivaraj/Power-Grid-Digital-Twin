@@ -49,25 +49,25 @@ function DistTransformerModel({ node }) {
 
   return (
     <group>
-      <Resize scale={7.0}>
+      <Resize scale={9.0}>
         <primitive object={clonedScene} />
       </Resize>
       {/* Load saturation bar (vertical strip) */}
-      <mesh position={[1.6, satFraction * 0.8, 0]}>
-        <boxGeometry args={[0.18, Math.min(2.4, satFraction * 1.6), 0.18]} />
+      <mesh position={[1.8, satFraction * 0.8, 0]}>
+        <boxGeometry args={[0.20, Math.min(2.6, satFraction * 1.8), 0.20]} />
         <meshStandardMaterial color={barColor} emissive={barColor} emissiveIntensity={1.5} />
       </mesh>
       {/* Heat halo (overload warning) */}
-      <mesh position={[0, 2.0, 0]} ref={heatRef} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[1.5, 2.2, 32]} />
+      <mesh position={[0, 2.5, 0]} ref={heatRef} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.8, 2.6, 32]} />
         <meshBasicMaterial color="#F59E0B" transparent opacity={0} side={THREE.DoubleSide} />
       </mesh>
       {/* Status beacon */}
-      <mesh position={[0, 3.8, 0]}>
-        <sphereGeometry args={[0.18, 12, 12]} />
+      <mesh position={[0, 4.5, 0]}>
+        <sphereGeometry args={[0.22, 12, 12]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2.0} />
       </mesh>
-      <pointLight position={[0, 2.5, 0]} color={color} intensity={isOverloaded ? 3 : 1} distance={7} />
+      <pointLight position={[0, 3.2, 0]} color={color} intensity={isOverloaded ? 3 : 1} distance={10} />
     </group>
   );
 }
@@ -98,11 +98,11 @@ export default function DistTransformerNode({ node }) {
       <DistTransformerModel node={node} />
       {isSelected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-          <ringGeometry args={[2.2, 2.5, 32]} />
+          <ringGeometry args={[2.5, 2.9, 32]} />
           <meshBasicMaterial color="#0EA5E9" transparent opacity={0.8} />
         </mesh>
       )}
-      <Billboard position={[0, 8.5, 0]}>
+      <Billboard position={[0, 10.0, 0]}>
         <Text fontSize={0.32} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>

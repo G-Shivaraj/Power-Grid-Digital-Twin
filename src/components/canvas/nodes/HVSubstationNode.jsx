@@ -23,8 +23,27 @@ function HVSubstationModel({ node }) {
         child.receiveShadow = true;
         if (child.material) {
           child.material = child.material.clone();
-          child.material.emissive = color;
-          child.material.emissiveIntensity = node.cyber_intrusion_flag ? 0.6 : 0.15;
+          const name = child.name.toLowerCase();
+
+          // Apply lovely high-contrast industrial materials to make details stand out beautifully
+          if (name.includes('ground') || name.includes('pad') || name.includes('base') || name.includes('plane') || name.includes('floor')) {
+            child.material.color = new THREE.Color('#64748B'); // Slate concrete pad
+            child.material.roughness = 0.9;
+            child.material.metalness = 0.1;
+            child.material.emissive = new THREE.Color('#000000');
+          } else if (name.includes('fence') || name.includes('wire') || name.includes('gate') || name.includes('wall')) {
+            child.material.color = new THREE.Color('#94A3B8'); // Galvanized steel fence
+            child.material.roughness = 0.4;
+            child.material.metalness = 0.8;
+            child.material.emissive = new THREE.Color('#000000');
+          } else {
+            // Main transformer equipment and high-voltage lattice towers
+            child.material.color = new THREE.Color('#334155'); // Deep slate industrial metal
+            child.material.roughness = 0.3;
+            child.material.metalness = 0.75;
+            child.material.emissive = color;
+            child.material.emissiveIntensity = node.cyber_intrusion_flag ? 0.5 : 0.05;
+          }
         }
       }
     });
@@ -49,24 +68,24 @@ function HVSubstationModel({ node }) {
 
   return (
     <group>
-      <Resize scale={10.0}>
+      <Resize scale={14.0}>
         <primitive object={clonedScene} />
       </Resize>
       {/* Transformer oil temp indicator (heat glow) */}
       <pointLight
-        position={[0, 2.0, 0]}
+        position={[0, 3.0, 0]}
         color={oilTempColor}
         intensity={1 + (node.transformer_oil_temp_c / 100) * 2}
-        distance={12}
+        distance={16}
       />
       {/* Status beacon */}
-      <mesh position={[0, 6.5, 0]}>
-        <sphereGeometry args={[0.28, 12, 12]} />
+      <mesh position={[0, 8.5, 0]}>
+        <sphereGeometry args={[0.35, 12, 12]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2.0} />
       </mesh>
       {/* Cyber intrusion beacon (red flashing) */}
-      <mesh position={[1.2, 6.5, 0]} ref={cyberAlertRef}>
-        <sphereGeometry args={[0.22, 10, 10]} />
+      <mesh position={[1.6, 8.5, 0]} ref={cyberAlertRef}>
+        <sphereGeometry args={[0.28, 10, 10]} />
         <meshStandardMaterial color="#EF4444" emissive="#EF4444" emissiveIntensity={0} />
       </mesh>
     </group>
@@ -96,11 +115,11 @@ export default function HVSubstationNode({ node }) {
       <HVSubstationModel node={node} />
       {isSelected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-          <ringGeometry args={[4.0, 4.4, 32]} />
+          <ringGeometry args={[5.0, 5.5, 32]} />
           <meshBasicMaterial color="#0EA5E9" transparent opacity={0.8} />
         </mesh>
       )}
-      <Billboard position={[0, 14.0, 0]}>
+      <Billboard position={[0, 17.5, 0]}>
         <Text fontSize={0.40} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>

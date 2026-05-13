@@ -51,28 +51,28 @@ function HeavyIndustryModel({ node }) {
 
   return (
     <group>
-      <Resize scale={8.0}>
+      <Resize scale={10.0}>
         <primitive object={clonedScene} />
       </Resize>
       {/* Smoke stacks */}
-      <group ref={smokeRef} position={[0, 4.0, -0.5]}>
+      <group ref={smokeRef} position={[0, 4.8, -0.5]}>
         {[0, 1].map((i) => (
           <mesh key={i} position={[(i - 0.5) * 1.4, i * 0.2, 0]}>
-            <sphereGeometry args={[0.28 + i * 0.06, 8, 8]} />
+            <sphereGeometry args={[0.32 + i * 0.08, 8, 8]} />
             <meshStandardMaterial color="#4B5563" transparent opacity={isSurge ? 0.7 : 0.35} />
           </mesh>
         ))}
       </group>
       {/* Power factor arc indicator */}
-      <mesh position={[1.8, 1.5, 0]} rotation={[Math.PI / 2, 0, -pfAngle]}>
-        <torusGeometry args={[0.4, 0.06, 6, 20, pfAngle]} />
+      <mesh position={[2.2, 1.8, 0]} rotation={[Math.PI / 2, 0, -pfAngle]}>
+        <torusGeometry args={[0.45, 0.07, 6, 20, pfAngle]} />
         <meshStandardMaterial color={pfColor} emissive={pfColor} emissiveIntensity={2.0} />
       </mesh>
-      <mesh position={[0, 3.8, 0]}>
-        <sphereGeometry args={[0.20, 12, 12]} />
+      <mesh position={[0, 4.5, 0]}>
+        <sphereGeometry args={[0.24, 12, 12]} />
         <meshStandardMaterial color={isSurge ? new THREE.Color('#EF4444') : color} emissive={isSurge ? new THREE.Color('#EF4444') : color} emissiveIntensity={2.5} />
       </mesh>
-      <pointLight position={[0, 2.5, 0]} color={isSurge ? '#EF4444' : color} intensity={isSurge ? 5 : 2} distance={9} />
+      <pointLight position={[0, 3.2, 0]} color={isSurge ? '#EF4444' : color} intensity={isSurge ? 5 : 2} distance={12} />
     </group>
   );
 }
@@ -101,11 +101,11 @@ export default function HeavyIndustryNode({ node }) {
       <HeavyIndustryModel node={node} />
       {isSelected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-          <ringGeometry args={[2.8, 3.2, 32]} />
+          <ringGeometry args={[3.4, 3.8, 32]} />
           <meshBasicMaterial color="#0EA5E9" transparent opacity={0.8} />
         </mesh>
       )}
-      <Billboard position={[0, 10.0, 0]}>
+      <Billboard position={[0, 11.5, 0]}>
         <Text fontSize={0.34} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}{surgeLabel}
         </Text>

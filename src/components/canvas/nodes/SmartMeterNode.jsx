@@ -40,14 +40,14 @@ function SmartMeterModel({ node }) {
       evIndicatorRef.current.visible = hasEV;
       if (hasEV) {
         evIndicatorRef.current.material.emissiveIntensity = 1.0 + Math.sin(t * 4) * 0.6;
-        evIndicatorRef.current.position.y = 1.8 + Math.sin(t * 2) * 0.08;
+        evIndicatorRef.current.position.y = 2.4 + Math.sin(t * 2) * 0.08;
       }
     }
     // Net metering arrow (up=exporting, down=consuming)
     if (solarArrowRef.current) {
       solarArrowRef.current.position.y = isExporting
-        ? 2.5 + Math.sin(t * 2) * 0.12
-        : 2.1 - Math.abs(Math.sin(t * 1.5)) * 0.08;
+        ? 3.2 + Math.sin(t * 2) * 0.12
+        : 2.8 - Math.abs(Math.sin(t * 1.5)) * 0.08;
       solarArrowRef.current.rotation.y = t * 0.5;
     }
   });
@@ -56,25 +56,25 @@ function SmartMeterModel({ node }) {
 
   return (
     <group>
-      <Resize scale={7.0}>
+      <Resize scale={9.0}>
         <primitive object={clonedScene} />
       </Resize>
       {/* Net metering arrow */}
-      <mesh position={[0, 2.5, 0]} ref={solarArrowRef} rotation={isExporting ? [0, 0, 0] : [Math.PI, 0, 0]}>
-        <coneGeometry args={[0.18, 0.45, 6]} />
+      <mesh position={[0, 3.2, 0]} ref={solarArrowRef} rotation={isExporting ? [0, 0, 0] : [Math.PI, 0, 0]}>
+        <coneGeometry args={[0.22, 0.55, 6]} />
         <meshStandardMaterial color={netArrowColor} emissive={netArrowColor} emissiveIntensity={2.0} />
       </mesh>
       {/* EV charging indicator (teal lightning bolt sphere) */}
-      <mesh position={[-1.0, 1.8, 0.5]} ref={evIndicatorRef} visible={false}>
-        <sphereGeometry args={[0.16, 8, 8]} />
+      <mesh position={[-1.2, 2.4, 0.5]} ref={evIndicatorRef} visible={false}>
+        <sphereGeometry args={[0.20, 8, 8]} />
         <meshStandardMaterial color="#06B6D4" emissive="#06B6D4" emissiveIntensity={1.5} />
       </mesh>
       {/* Status glow */}
-      <mesh position={[0, 3.2, 0]}>
-        <sphereGeometry args={[0.14, 10, 10]} />
+      <mesh position={[0, 4.0, 0]}>
+        <sphereGeometry args={[0.18, 10, 10]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2.0} />
       </mesh>
-      <pointLight position={[0, 2.0, 0]} color={isExporting ? '#FCD34D' : color} intensity={1.2} distance={6} />
+      <pointLight position={[0, 2.8, 0]} color={isExporting ? '#FCD34D' : color} intensity={1.2} distance={8} />
     </group>
   );
 }
@@ -106,11 +106,11 @@ export default function SmartMeterNode({ node }) {
       <SmartMeterModel node={node} />
       {isSelected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-          <ringGeometry args={[2.0, 2.3, 32]} />
+          <ringGeometry args={[2.5, 2.9, 32]} />
           <meshBasicMaterial color="#0EA5E9" transparent opacity={0.8} />
         </mesh>
       )}
-      <Billboard position={[0, 8.0, 0]}>
+      <Billboard position={[0, 9.8, 0]}>
         <Text fontSize={0.31} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>

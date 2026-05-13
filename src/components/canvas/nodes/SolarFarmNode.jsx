@@ -24,9 +24,22 @@ function SolarModel({ node }) {
         child.receiveShadow = true;
         if (child.material) {
           child.material = child.material.clone();
-          child.material.emissive = new THREE.Color('#3b82f6');
-          child.material.emissiveIntensity = 0.1 + solarFraction * 0.45;
-          mats.push(child.material);
+          const name = child.name.toLowerCase();
+
+          if (name.includes('ground') || name.includes('pad') || name.includes('base')) {
+            child.material.color = new THREE.Color('#64748B');
+            child.material.roughness = 0.9;
+            child.material.metalness = 0.1;
+            child.material.emissive = new THREE.Color('#000000');
+          } else {
+            // Solar panel frames and photovoltaic cells
+            child.material.color = new THREE.Color('#0F172A'); // Deep sleek solar slate/blue
+            child.material.roughness = 0.2;
+            child.material.metalness = 0.85; // High gloss/reflection
+            child.material.emissive = new THREE.Color('#3B82F6');
+            child.material.emissiveIntensity = 0.05 + solarFraction * 0.25;
+            mats.push(child.material);
+          }
         }
       }
     });
@@ -35,24 +48,24 @@ function SolarModel({ node }) {
 
   useFrame(({ clock }) => {
     materialsRef.current.forEach((mat, i) => {
-      mat.emissiveIntensity = 0.1 + Math.sin(clock.getElapsedTime() * 1.5 + i * 0.4) * 0.08 * solarFraction;
+      mat.emissiveIntensity = 0.05 + (solarFraction * 0.2) + Math.sin(clock.getElapsedTime() * 1.5 + i * 0.4) * 0.05 * solarFraction;
     });
   });
 
   return (
     <group>
-      <Resize scale={8.0}>
+      <Resize scale={10.0}>
         <primitive object={clonedScene} />
       </Resize>
-      <mesh position={[0, 2.5, 0]}>
-        <sphereGeometry args={[0.18, 10, 10]} />
+      <mesh position={[0, 3.5, 0]}>
+        <sphereGeometry args={[0.24, 10, 10]} />
         <meshStandardMaterial
           color={solarFraction > 0.1 ? '#FBBF24' : '#94A3B8'}
           emissive={solarFraction > 0.1 ? '#FBBF24' : '#94A3B8'}
           emissiveIntensity={solarFraction * 2}
         />
       </mesh>
-      <pointLight position={[0, 2.5, 0]} color={solarFraction > 0.1 ? '#FBBF24' : '#94A3B8'} intensity={solarFraction * 2.5} distance={8} />
+      <pointLight position={[0, 3.5, 0]} color={solarFraction > 0.1 ? '#FBBF24' : '#94A3B8'} intensity={solarFraction * 2.5} distance={12} />
     </group>
   );
 }
@@ -79,11 +92,11 @@ export default function SolarFarmNode({ node }) {
       <SolarModel node={node} />
       {isSelected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-          <ringGeometry args={[2.8, 3.1, 32]} />
+          <ringGeometry args={[3.4, 3.8, 32]} />
           <meshBasicMaterial color="#0EA5E9" transparent opacity={0.8} />
         </mesh>
       )}
-      <Billboard position={[0, 5.5, 0]}>
+      <Billboard position={[0, 7.5, 0]}>
         <Text fontSize={0.33} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>
