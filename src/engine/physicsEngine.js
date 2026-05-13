@@ -1,254 +1,452 @@
 /**
- * Physics Engine — Simplified Per-Unit Power Flow
+ * Physics Engine — 5-Layer City Power Grid
  *
- * Per-unit system:
- *   V_base = 33 kV,  S_base = 50 MVA
- *   Z_base = V_base² / S_base ≈ 21.78 Ω
- *
- * Voltage drop model (simplified):
- *   ΔV ≈ (P*R + Q*X) / V_base²   [in per-unit]
- *
- * Resistance values are given in per-unit (already normalised).
- * The key insight: with S_base=50 MVA, a 10 MW demand over a 0.05pu line
- * gives ΔV = 10/50 * 0.05 = 0.01 pu — very small. Scale is critical.
- *
- * We use: ΔV = (flow_MW / S_base_MVA) * resistance_pu
- * This keeps voltages in realistic 0.95–1.05 pu range for normal load,
- * and crashes to <0.88 pu when factory (35 MW) is added.
+ * Key equations:
+ *   Apparent Power:  S = √(P² + Q²)  [MVA]
+ *   Power Factor:    cos(θ) = P / S
+ *   Voltage Drop:    ΔV ≈ (P·R + Q·X) / V²  [per-unit]
+ *   Conductor Temp:  T = T_ambient + I²·R_thermal  (Joule heating)
+ *   Line Sag:        sag ∝ thermal expansion coefficient × ΔT
+ *   Generator Hz:    f = (RPM × poles) / 120
  */
 
-const S_BASE = 50; // MVA
+const S_BASE = 300;       // MVA — system base
+const RPM_SYNC = 3000;    // RPM for 50Hz (2-pole machine)
+const POLES = 2;
 
-// ── Solar curve ───────────────────────────────────────────────────────────────
+// ── Solar irradiance curve ────────────────────────────────────────────────────
 export function computeSolarOutput(timeOfDay, maxSolarMW, solarOutputPercent = 100) {
-  const t = timeOfDay;
-  if (t < 6 || t > 18) return 0;
-  const raw = Math.sin((Math.PI * (t - 6)) / 12);
-  return raw * maxSolarMW * (solarOutputPercent / 100);
+  if (timeOfDay < 6 || timeOfDay > 19) return 0;
+  const raw = Math.sin((Math.PI * (timeOfDay - 6)) / 13);
+  return Math.max(0, raw * maxSolarMW * (solarOutputPercent / 100));
 }
 
-// ── Status from voltage ───────────────────────────────────────────────────────
+// ── EV charging demand — spikes 17:00–22:00 ──────────────────────────────────
+function computeEVChargingDraw(timeOfDay) {
+  if (timeOfDay >= 17 && timeOfDay <= 22) {
+    const peak = Math.sin(Math.PI * (timeOfDay - 17) / 5);
+    return peak * 1.2; // MW additional
+  }
+  return 0;
+}
+
+// ── Voltage status thresholds ─────────────────────────────────────────────────
 function voltageStatus(v) {
   if (v >= 0.95) return 'optimal';
   if (v >= 0.88) return 'stressed';
   return 'failed';
 }
 
-// ── Status from line loading ──────────────────────────────────────────────────
 function lineStatus(ratio) {
   if (ratio <= 0.75) return 'optimal';
   if (ratio <= 0.95) return 'stressed';
   return 'failed';
 }
 
-// ── Voltage drop ──────────────────────────────────────────────────────────────
-// ΔV = (P_MW / S_base) * R_pu
-function vDrop(powerMW, resistance) {
-  return (powerMW / S_BASE) * resistance;
+// ── Conductor temperature (I² Joule heating model) ───────────────────────────
+function computeConductorTemp(loadRatio, ambientTemp = 40) {
+  return ambientTemp + loadRatio * loadRatio * 55;
 }
 
-// ── Main tick ─────────────────────────────────────────────────────────────────
-export function runPhysicsTick(state) {
-  const { nodes, lines, factory, capacitor, simulation } = state;
-  const { timeOfDay, tick } = simulation;
+// ── Line sag from thermal expansion ──────────────────────────────────────────
+function computeLineSag(conductorTemp) {
+  const alpha = 23e-6; // Al expansion coefficient /°C
+  const deltaT = Math.max(0, conductorTemp - 20);
+  return parseFloat((6.0 * (1 + alpha * deltaT * 80)).toFixed(2));
+}
 
-  // 1. Solar generation
-  const sf = nodes.solarFarm;
+// ── Transformer oil temperature (thermal lag model) ───────────────────────────
+function computeOilTemp(loadRatio, prevOilTemp, ambientTemp = 35) {
+  const targetTemp = ambientTemp + loadRatio * loadRatio * 90;
+  return parseFloat((prevOilTemp + (targetTemp - prevOilTemp) * 0.06).toFixed(2));
+}
+
+// ── Tap changer position (regulates output voltage) ───────────────────────────
+function computeTapPosition(loadRatio) {
+  if (loadRatio < 0.4) return -2;
+  if (loadRatio < 0.6) return 0;
+  if (loadRatio < 0.75) return 2;
+  if (loadRatio < 0.90) return 4;
+  return 6;
+}
+
+// ── Phase imbalance (worse under uneven single-phase loads) ──────────────────
+function computePhaseImbalance(loadRatio, timeOfDay) {
+  const eveningFactor = (timeOfDay >= 18 && timeOfDay <= 22) ? 1.8 : 1.0;
+  return parseFloat((0.5 + loadRatio * 3.2 * eveningFactor).toFixed(2));
+}
+
+// ── Generator RPM (governor response to load-gen delta) ──────────────────────
+function computeGeneratorRPM(imbalancePct, prevRPM) {
+  const target = RPM_SYNC * (1 - imbalancePct * 0.12);
+  return parseFloat(Math.max(2750, Math.min(3200, prevRPM + (target - prevRPM) * 0.18)).toFixed(1));
+}
+
+// ── Fault current in RMU (spikes when downstream fault) ──────────────────────
+function computeFaultCurrent(loadRatio, faultActive) {
+  if (faultActive) return parseFloat((3200 + Math.random() * 800).toFixed(0));
+  return parseFloat((loadRatio * 420 + Math.random() * 20).toFixed(0));
+}
+
+// ── Lifespan decay from overload ──────────────────────────────────────────────
+function decayLifespan(currentDays, saturationPct) {
+  if (saturationPct > 100) {
+    const overloadFactor = (saturationPct - 100) / 100;
+    return Math.max(0, currentDays - overloadFactor * 0.4);
+  }
+  return currentDays;
+}
+
+// ── Harmonic distortion (EV charging + cheap electronics) ────────────────────
+function computeHarmonics(baseHarmonic, evMW, timeOfDay) {
+  const evFactor = evMW * 1.8;
+  const nightFactor = (timeOfDay >= 20 && timeOfDay <= 23) ? 1.4 : 1.0;
+  return parseFloat(Math.min(12.0, baseHarmonic + evFactor + (nightFactor - 1)).toFixed(2));
+}
+
+// ── Main physics tick ─────────────────────────────────────────────────────────
+export function runPhysicsTick(state) {
+  const { nodes, lines, simulation } = state;
+  const { timeOfDay, tick, surgeEventActive } = simulation;
+  const RF = 5; // voltage drop scaling factor (tuned for 5-layer city grid)
+
+  // ─── Layer 1: Generation ──────────────────────────────────────────────────
+  const sf    = nodes.solarFarm;
+  const coal  = nodes.coalPlant;
+  const gas   = nodes.gasStabilizer;
+
   const solarMW = computeSolarOutput(timeOfDay, sf.maxSolarOutput, sf.solarOutputPercent);
 
-  // 2. Load demands
-  const r1Demand = nodes.residential1.baseDemand;
-  const r2Demand = nodes.residential2.baseDemand;
-  const r3Demand = nodes.residential3.baseDemand;
-  const factoryDemand = factory ? factory.industrialLoad : 0;
-  const factoryPF = factory ? Math.max(0.1, factory.powerFactor) : 0.75;
-  const factoryQ = factoryDemand * Math.tan(Math.acos(factoryPF));
+  // ─── Layer 4: Load computation ────────────────────────────────────────────
+  const smRes  = nodes.smartMeter_residential;
+  const smHosp = nodes.smartMeter_hospital;
+  const hi     = nodes.heavyIndustry;
 
-  // Capacitor reactive support
-  const capQ = capacitor ? capacitor.reactivePowerSupport : 0;
-  // Capacitor provides voltage boost via reactive compensation
-  // ΔV_cap = capQ / S_base * X_eff (simplified)
-  const capVBoost = (capQ / S_BASE) * 6.5; // 5 MVAR → ~0.65 pu boost factor for full recovery
+  const timeVariation = 1 + 0.28 * Math.sin(Math.PI * (timeOfDay - 7) / 12);
+  const resDemandBase = smRes.baseDemand * timeVariation;
+  const evMW = computeEVChargingDraw(timeOfDay);
+  const resDemand = resDemandBase + evMW;
+  const hospDemand = smHosp.baseDemand * (1 + 0.06 * Math.sin(Math.PI * timeOfDay / 12));
 
-  // Total load and generation
-  const totalLoad = r1Demand + r2Demand + r3Demand + factoryDemand;
-  const netSubstation = Math.max(0, totalLoad - solarMW);
-  const totalGeneration = netSubstation + solarMW;
+  const industryBaseMW = hi.heavy_machinery_load_kw / 1000;
+  const industryDemand = surgeEventActive ? industryBaseMW * 1.65 : industryBaseMW;
+  const industryPF = hi.power_factor_ratio;
+  const industryQ  = industryDemand * Math.tan(Math.acos(Math.max(0.5, Math.min(0.999, industryPF))));
 
-  // 3. Per-unit line resistances
-  const R_sub_r1    = lines.find(l => l.id === 'line-sub-r1')?.resistance    ?? 0.05;
-  const R_sub_r2    = lines.find(l => l.id === 'line-sub-r2')?.resistance    ?? 0.06;
-  const R_sub_solar = lines.find(l => l.id === 'line-sub-solar')?.resistance ?? 0.04;
-  const R_solar_r3  = lines.find(l => l.id === 'line-solar-r3')?.resistance  ?? 0.03;
-  const R_r1_r2     = lines.find(l => l.id === 'line-r1-r2')?.resistance     ?? 0.03;
+  const totalLoad = resDemand + hospDemand + industryDemand;
 
-  // Scale factor: resistance is in pu but 0.05 on a 50MVA base gives very small drops.
-  // Multiply by 10 to get realistic drops (0.01 → 0.1 pu per 10 MW over 0.05R line).
-  const RF = 10;
+  // Coal fills the gap; gas picks up overflow
+  const coalRequired = Math.max(0, totalLoad - solarMW);
+  const coalMW = Math.min(coal.maxCapacity, coalRequired);
+  const gasMW  = Math.max(0, coalRequired - coal.maxCapacity);
+  const totalGeneration = solarMW + coalMW + gasMW;
 
-  // 4. Voltage at each bus (V_bus = 1.0 - Σ drops on path from substation)
-  const vSub = 1.0; // slack bus
+  const imbalancePct = totalLoad > 0 ? (totalLoad - totalGeneration) / totalLoad : 0;
+  const coalRPM = computeGeneratorRPM(imbalancePct, coal.generator_rpm);
+  const gridFrequency = parseFloat(((coalRPM * POLES) / 120).toFixed(4));
 
-  // R1: path Sub → R1
-  const r1Path = r1Demand + (factory ? factoryDemand * 0.35 : 0);
-  const vR1 = vSub
-    - vDrop(r1Path, R_sub_r1 * RF)
-    + capVBoost * 0.35;
+  // Apparent power on coal line: S = √(P²+Q²)
+  const coalQ  = coalMW * 0.22; // typical 0.22 MVAR/MW for coal plant
+  const coalS  = Math.sqrt(coalMW ** 2 + coalQ ** 2);
 
-  // R2: path Sub → R2 (factory hangs off R2 path)
-  const r2Path = r2Demand + (factory ? factoryDemand * 0.65 : 0);
-  const r2QDrop = factory ? (factoryQ / S_BASE) * R_sub_r2 * RF * 0.8 : 0;
-  const vR2 = vSub
-    - vDrop(r2Path, R_sub_r2 * RF)
-    - r2QDrop
-    + capVBoost * 0.65;
+  // ─── Layer 2: HV Substation ───────────────────────────────────────────────
+  const hvSub = nodes.hvSubstation;
+  const hvLoad = totalLoad;
+  const hvLoadRatio = Math.min(2.0, hvLoad / S_BASE);
 
-  // R3: path Sub → SolarBus → R3 (solar partially supplies R3)
-  const solarToR3 = Math.min(solarMW, r3Demand);
-  const r3NetFromSub = Math.max(0, r3Demand - solarToR3);
-  // Solar exports to bus: negative drop on sub→solar line
-  const solarExport = Math.max(0, solarMW - r3Demand);
-  const vSolarBus = vSub + vDrop(solarExport, R_sub_solar * RF * 0.5);
-  const vR3 = vSolarBus - vDrop(r3Demand, R_solar_r3 * RF * 0.5) + capVBoost * 0.20;
+  const oilTemp = computeOilTemp(hvLoadRatio, hvSub.transformer_oil_temp_c);
+  const tapPos  = computeTapPosition(hvLoadRatio);
 
-  // Solar farm bus
-  const vSolarFarm = Math.min(1.05, vSolarBus);
+  // Cyber intrusion: low probability event under stress
+  let cyberFlag = hvSub.cyber_intrusion_flag;
+  if (hvLoadRatio > 0.55 && Math.random() < 0.0004) cyberFlag = true;
+  if (cyberFlag && Math.random() < 0.003) cyberFlag = false;
 
-  // Factory bus (branch off R2)
-  let vFactory = null;
-  if (factory) {
-    vFactory = Math.max(0.6, vR2 - (factoryQ / S_BASE) * R_sub_r2 * RF * 0.5 + capVBoost * 0.5);
+  // HV bus voltage (tap changer partially compensates for voltage drop)
+  const vHV = parseFloat(Math.max(0.92, Math.min(1.05,
+    1.0 + tapPos * 0.004 - hvLoadRatio * 0.04
+  )).toFixed(4));
+
+  // Outgoing kV (nominal 33kV adjusted by tap)
+  const outgoingKV = parseFloat((33.0 * (1 + tapPos * 0.004)).toFixed(2));
+
+  // ─── Layer 3: Zone Substations ────────────────────────────────────────────
+  const R_north = lines.find(l => l.id === 'sub-zone-north')?.resistance ?? 0.04;
+  const R_east  = lines.find(l => l.id === 'sub-zone-east')?.resistance  ?? 0.05;
+  const R_west  = lines.find(l => l.id === 'sub-zone-west')?.resistance  ?? 0.04;
+
+  const northLoad = resDemand * 0.50 + hospDemand * 0.20;
+  const eastLoad  = hospDemand * 0.80 + resDemand * 0.25;
+  const westLoad  = industryDemand * 0.55 + resDemand * 0.25;
+
+  const vNorth = parseFloat(Math.max(0.60, vHV - (northLoad / S_BASE) * R_north * RF).toFixed(4));
+  const vEast  = parseFloat(Math.max(0.60, vHV - (eastLoad  / S_BASE) * R_east  * RF).toFixed(4));
+  const vWest  = parseFloat(Math.max(0.60, vHV - (westLoad  / S_BASE) * R_west  * RF).toFixed(4));
+
+  const northPhase = computePhaseImbalance(northLoad / 80, timeOfDay);
+  const eastPhase  = computePhaseImbalance(eastLoad  / 80, timeOfDay);
+  const westPhase  = computePhaseImbalance(westLoad  / 80, timeOfDay);
+
+  // Self-healing: if North collapses, ring tie carries load from East
+  const northFaulted = vNorth < 0.88;
+  const selfHealingActive = northFaulted;
+  const vNorthHealed = selfHealingActive
+    ? parseFloat(Math.max(0.88, vEast - 0.02).toFixed(4))
+    : vNorth;
+
+  // ─── Layer 3: RMUs ────────────────────────────────────────────────────────
+  const rmuNorthFaultCurrent = computeFaultCurrent(northLoad / 40, northFaulted);
+  const rmuEastFaultCurrent  = computeFaultCurrent(eastLoad  / 40, false);
+  const rmuNorthIsolated = northFaulted;
+  const rmuNorthLatency  = parseFloat((8 + Math.random() * 18).toFixed(1));
+  const rmuEastLatency   = parseFloat((5 + Math.random() * 12).toFixed(1));
+
+  // ─── Layer 3 → 4: Voltage at distribution transformers ───────────────────
+  const R_rmuN = lines.find(l => l.id === 'north-rmu-n')?.resistance ?? 0.06;
+  const R_rmuE = lines.find(l => l.id === 'east-rmu-e')?.resistance  ?? 0.06;
+  const R_alphaLine = lines.find(l => l.id === 'rmu-n-alpha')?.resistance ?? 0.07;
+  const R_betaLine  = lines.find(l => l.id === 'rmu-e-beta')?.resistance  ?? 0.07;
+
+  const vRmuNorth = parseFloat(Math.max(0.60, vNorthHealed - (northLoad / S_BASE) * R_rmuN * RF).toFixed(4));
+  const vRmuEast  = parseFloat(Math.max(0.60, vEast        - (eastLoad  / S_BASE) * R_rmuE  * RF).toFixed(4));
+
+  const vAlpha = parseFloat(Math.max(0.60, vRmuNorth - (resDemand  / S_BASE) * R_alphaLine * RF).toFixed(4));
+  const vBeta  = parseFloat(Math.max(0.60, vRmuEast  - (hospDemand / S_BASE) * R_betaLine  * RF).toFixed(4));
+
+  // ─── Layer 4: Edge devices ────────────────────────────────────────────────
+  const R_alphaLV = lines.find(l => l.id === 'alpha-res')?.resistance  ?? 0.10;
+  const R_betaLV  = lines.find(l => l.id === 'beta-hosp')?.resistance  ?? 0.08;
+
+  const vResidential = parseFloat(Math.max(0.60, vAlpha - (resDemand  / S_BASE) * R_alphaLV * RF).toFixed(4));
+  const vHospital    = parseFloat(Math.max(0.60, vBeta  - (hospDemand / S_BASE) * R_betaLV  * RF).toFixed(4));
+
+  // Net metering: negative when solar exports exceed consumption
+  const solarExportMW = Math.max(0, solarMW - (resDemand * 0.4));
+  const netMeteringKW = solarExportMW > 0.5
+    ? -(solarExportMW * 1000 * 0.6)
+    : smRes.baseDemand * 1000 * 0.7;
+  const harmonicRes  = computeHarmonics(2.1, evMW, timeOfDay);
+  const harmonicHosp = computeHarmonics(5.8, 0.18, timeOfDay);
+
+  // Load saturation on distribution transformers
+  const alphaLoadSat = parseFloat(Math.min(150, (resDemand / 20) * 100).toFixed(1));
+  const betaLoadSat  = parseFloat(Math.min(150, (hospDemand / 14) * 100).toFixed(1));
+
+  // Lifespan decay
+  const dtAlpha = nodes.distTransformer_alpha;
+  const dtBeta  = nodes.distTransformer_beta;
+  const newAlphaLifespan = decayLifespan(dtAlpha.estimated_lifespan_remaining_days, alphaLoadSat);
+  const newBetaLifespan  = decayLifespan(dtBeta.estimated_lifespan_remaining_days, betaLoadSat);
+
+  // Heavy industry apparent power S = √(P²+Q²)
+  const industryS = Math.sqrt(industryDemand ** 2 + industryQ ** 2);
+
+  //  // Fault detection (suppress during tick 1 warmup) ─────────────────────────
+  const allVoltages = [vHV, vNorthHealed, vEast, vWest, vAlpha, vBeta, vResidential, vHospital];
+  const faultActive = tick > 1 && (allVoltages.some(v => v < 0.88) || cyberFlag);
+  let faultDetails = null;
+  if (faultActive) {
+    const minV = Math.min(...allVoltages);
+    faultDetails = {
+      type: cyberFlag ? 'cyber-intrusion' : northFaulted ? 'voltage-collapse' : 'overload',
+      minVoltage: minV.toFixed(3),
+      selfHealingEngaged: selfHealingActive,
+      industryLoad: industryDemand.toFixed(1),
+      totalLoad: totalLoad.toFixed(1),
+      surgeActive: surgeEventActive,
+    };
   }
 
-  // Grid frequency deviation from load-gen imbalance
-  const imbalancePct = totalLoad > 0 ? (totalLoad - totalGeneration) / totalLoad : 0;
-  const gridFrequency = Math.max(48, Math.min(52, 50.0 - imbalancePct * 2.5));
+  const voltageAvg = allVoltages.reduce((a, b) => a + b, 0) / allVoltages.length;
 
-  // 5. Line flows
-  const r1Flow = r1Path;
-  const r2Flow = r2Path;
-  const solarFlow = Math.abs(solarMW - r3NetFromSub);
-  const solarFlowDir = solarMW > r3Demand ? -1 : 1;
-  const r3Flow = solarToR3;
-  const tieFlow = Math.abs(r1Flow - r2Flow) * 0.12;
-
-  const newLines = lines.map(line => {
-    let flow = 0, direction = line.powerFlowDirection;
-    switch (line.id) {
-      case 'line-sub-r1':    flow = r1Flow;   direction = 1; break;
-      case 'line-sub-r2':    flow = r2Flow;   direction = 1; break;
-      case 'line-sub-solar': flow = solarFlow; direction = solarFlowDir; break;
-      case 'line-solar-r3':  flow = r3Flow;   direction = 1; break;
-      case 'line-r1-r2':     flow = tieFlow;  direction = r1Flow > r2Flow ? 1 : -1; break;
-    }
-    const ratio = Math.min(flow / line.thermalLimit, 2.0);
-    return { ...line, currentFlow: flow, loadRatio: ratio, status: lineStatus(ratio), powerFlowDirection: direction };
-  });
-
-  // 6. Clamp voltages to physical limits
-  const vR1c = Math.max(0.6, Math.min(1.05, vR1));
-  const vR2c = Math.max(0.6, Math.min(1.05, vR2));
-  const vR3c = Math.max(0.6, Math.min(1.05, vR3));
-
+  // ─── Build updated nodes ───────────────────────────────────────────────────
   const newNodes = {
     ...nodes,
-    substation: {
-      ...nodes.substation,
-      voltage: vSub,
-      activePower: parseFloat(netSubstation.toFixed(2)),
-      reactivePower: parseFloat((factoryQ - capQ).toFixed(2)),
-      current: parseFloat((netSubstation / (vSub * 33)).toFixed(3)),
-      status: 'optimal',
+
+    // Layer 1
+    coalPlant: {
+      ...coal,
+      generator_rpm: coalRPM,
+      active_power_mw: parseFloat(coalMW.toFixed(2)),
+      reactive_power_mvar: parseFloat(coalQ.toFixed(2)),
+      spinning_reserve_mw: parseFloat((coal.maxCapacity - coalMW).toFixed(1)),
+      voltage: 1.0,
+      status: coalMW > coal.maxCapacity * 0.95 ? 'stressed' : 'optimal',
     },
     solarFarm: {
-      ...nodes.solarFarm,
-      voltage: Math.max(0.95, vSolarFarm),
-      activePower: parseFloat(solarMW.toFixed(2)),
+      ...sf,
+      active_power_mw: parseFloat(solarMW.toFixed(2)),
+      reactive_power_mvar: 0,
       solarOutput: solarMW,
-      status: solarMW > sf.maxSolarOutput * 0.9 ? 'stressed' : 'optimal',
+      voltage: 1.0,
+      status: 'optimal',
     },
-    residential1: {
-      ...nodes.residential1,
-      voltage: vR1c,
-      activePower: r1Demand,
-      reactivePower: parseFloat((r1Demand * 0.33).toFixed(2)),
-      actualDemand: r1Demand,
-      status: voltageStatus(vR1c),
+    gasStabilizer: {
+      ...gas,
+      active_power_mw: parseFloat(gasMW.toFixed(2)),
+      reactive_power_mvar: parseFloat((gasMW * 0.15).toFixed(2)),
+      isStandby: gasMW < 1,
+      voltage: 1.0,
+      status: gasMW > 0 ? 'stressed' : 'optimal',
     },
-    residential2: {
-      ...nodes.residential2,
-      voltage: vR2c,
-      activePower: r2Demand,
-      reactivePower: parseFloat((r2Demand * 0.33).toFixed(2)),
-      actualDemand: r2Demand,
-      status: voltageStatus(vR2c),
+
+    // Layer 2
+    hvSubstation: {
+      ...hvSub,
+      transformer_oil_temp_c: oilTemp,
+      tap_changer_position: tapPos,
+      outgoing_voltage_kv: outgoingKV,
+      cyber_intrusion_flag: cyberFlag,
+      voltage: vHV,
+      activePower: parseFloat(hvLoad.toFixed(2)),
+      reactivePower: parseFloat((industryQ + hospDemand * 0.3).toFixed(2)),
+      status: cyberFlag ? 'failed' : voltageStatus(vHV),
     },
-    residential3: {
-      ...nodes.residential3,
-      voltage: vR3c,
-      activePower: r3Demand,
-      reactivePower: parseFloat((r3Demand * 0.33).toFixed(2)),
-      actualDemand: r3Demand,
-      status: voltageStatus(vR3c),
+    heavyIndustry: {
+      ...hi,
+      activePower: parseFloat(industryDemand.toFixed(2)),
+      reactivePower: parseFloat(industryQ.toFixed(2)),
+      voltage: parseFloat(Math.max(0.60, vWest - 0.02).toFixed(4)),
+      status: voltageStatus(Math.max(0.60, vWest - 0.02)),
+    },
+
+    // Layer 3
+    zoneSub_north: {
+      ...nodes.zoneSub_north,
+      feeder_breaker_status: selfHealingActive ? 'TRIPPED' : 'CLOSED',
+      phase_imbalance_percent: northPhase,
+      activePower: parseFloat(northLoad.toFixed(2)),
+      voltage: vNorthHealed,
+      status: selfHealingActive ? 'stressed' : voltageStatus(vNorthHealed),
+    },
+    zoneSub_east: {
+      ...nodes.zoneSub_east,
+      feeder_breaker_status: 'CLOSED',
+      phase_imbalance_percent: eastPhase,
+      activePower: parseFloat(eastLoad.toFixed(2)),
+      voltage: vEast,
+      status: voltageStatus(vEast),
+    },
+    zoneSub_west: {
+      ...nodes.zoneSub_west,
+      feeder_breaker_status: 'CLOSED',
+      phase_imbalance_percent: westPhase,
+      activePower: parseFloat(westLoad.toFixed(2)),
+      voltage: vWest,
+      status: voltageStatus(vWest),
+    },
+    rmu_north: {
+      ...nodes.rmu_north,
+      fault_current_detected_amps: rmuNorthFaultCurrent,
+      isolation_switch_state: rmuNorthIsolated,
+      telemetry_latency_ms: rmuNorthLatency,
+      voltage: vRmuNorth,
+      status: rmuNorthIsolated ? 'stressed' : voltageStatus(vRmuNorth),
+    },
+    rmu_east: {
+      ...nodes.rmu_east,
+      fault_current_detected_amps: rmuEastFaultCurrent,
+      isolation_switch_state: false,
+      telemetry_latency_ms: rmuEastLatency,
+      voltage: vRmuEast,
+      status: voltageStatus(vRmuEast),
+    },
+
+    // Layer 4
+    distTransformer_alpha: {
+      ...dtAlpha,
+      load_saturation_percent: alphaLoadSat,
+      estimated_lifespan_remaining_days: Math.floor(newAlphaLifespan),
+      voltage: vAlpha,
+      activePower: parseFloat(resDemand.toFixed(2)),
+      status: alphaLoadSat > 100 ? 'stressed' : voltageStatus(vAlpha),
+    },
+    distTransformer_beta: {
+      ...dtBeta,
+      load_saturation_percent: betaLoadSat,
+      estimated_lifespan_remaining_days: Math.floor(newBetaLifespan),
+      voltage: vBeta,
+      activePower: parseFloat(hospDemand.toFixed(2)),
+      status: betaLoadSat > 100 ? 'stressed' : voltageStatus(vBeta),
+    },
+    smartMeter_residential: {
+      ...smRes,
+      net_metering_kw: parseFloat(netMeteringKW.toFixed(0)),
+      ev_charging_draw_kw: parseFloat((evMW * 1000).toFixed(0)),
+      harmonic_distortion_percent: harmonicRes,
+      voltage: vResidential,
+      activePower: parseFloat(resDemand.toFixed(2)),
+      status: voltageStatus(vResidential),
+    },
+    smartMeter_hospital: {
+      ...smHosp,
+      net_metering_kw: smHosp.net_metering_kw,
+      ev_charging_draw_kw: 180,
+      harmonic_distortion_percent: harmonicHosp,
+      voltage: vHospital,
+      activePower: parseFloat(hospDemand.toFixed(2)),
+      status: voltageStatus(vHospital),
     },
   };
 
-  // 7. Factory node update
-  let newFactory = factory;
-  if (factory && vFactory !== null) {
-    newFactory = {
-      ...factory,
-      voltage: vFactory,
-      activePower: factoryDemand,
-      reactivePower: parseFloat(factoryQ.toFixed(2)),
-      status: voltageStatus(vFactory),
+  // ─── Build updated lines ──────────────────────────────────────────────────
+  const lineFlowMap = {
+    'hv-coal-sub':   { flow: coalMW,       dir: 1,   P: coalMW,        Q: coalQ,        isHV: true },
+    'hv-solar-sub':  { flow: solarMW,      dir: solarMW > 0 ? -1 : 0, P: solarMW, Q: 0, isHV: true },
+    'hv-gas-sub':    { flow: gasMW,        dir: gasMW > 0 ? 1 : 0,    P: gasMW,   Q: gasMW * 0.15, isHV: true },
+    'sub-zone-north':{ flow: northLoad,    dir: 1 },
+    'sub-zone-east': { flow: eastLoad,     dir: 1 },
+    'sub-zone-west': { flow: westLoad,     dir: 1 },
+    'sub-industry':  { flow: industryDemand, dir: 1 },
+    'north-rmu-n':   { flow: northLoad,    dir: 1 },
+    'east-rmu-e':    { flow: eastLoad,     dir: 1 },
+    'ring-tie':      { flow: selfHealingActive ? northLoad * 0.6 : 0, dir: selfHealingActive ? -1 : 0 },
+    'rmu-n-alpha':   { flow: resDemand,    dir: 1 },
+    'rmu-e-beta':    { flow: hospDemand,   dir: 1 },
+    'alpha-res':     { flow: resDemand,    dir: 1 },
+    'beta-hosp':     { flow: hospDemand,   dir: 1 },
+  };
+
+  const newLines = lines.map(line => {
+    const lf = lineFlowMap[line.id] || { flow: 0, dir: 1 };
+    const flow = lf.flow;
+    const P = lf.P ?? flow;
+    const Q = lf.Q ?? flow * 0.18;
+    const apparentPower = lf.isHV ? Math.sqrt(P ** 2 + Q ** 2) : undefined;
+    const ratio = Math.min(2.0, flow / line.thermalLimit);
+    const conductorTemp = line.conductor_temp_celsius !== undefined
+      ? computeConductorTemp(ratio, 40)
+      : undefined;
+    const lineSag = conductorTemp !== undefined
+      ? computeLineSag(conductorTemp)
+      : undefined;
+    return {
+      ...line,
+      currentFlow: parseFloat(flow.toFixed(2)),
+      loadRatio: parseFloat(ratio.toFixed(3)),
+      status: lineStatus(ratio),
+      powerFlowDirection: lf.dir,
+      ...(apparentPower !== undefined && { apparent_power_mva: parseFloat(apparentPower.toFixed(2)) }),
+      ...(conductorTemp !== undefined && { conductor_temp_celsius: parseFloat(conductorTemp.toFixed(1)) }),
+      ...(lineSag !== undefined && { line_sag_meters: lineSag }),
     };
-  }
-
-  // 8. Fault detection (only when factory is present — base grid should be healthy)
-  const allNodes = factory
-    ? { ...newNodes, factory: newFactory }
-    : newNodes;
-
-  const failedNodes = Object.values(allNodes).filter(n => n.status === 'failed');
-  const overloadedLines = newLines.filter(l => l.status === 'failed');
-  const faultActive = factory !== null && (failedNodes.length > 0 || overloadedLines.length > 0);
-
-  let faultDetails = null;
-  if (faultActive) {
-    const worstNode = [...failedNodes].sort((a, b) => a.voltage - b.voltage)[0];
-    const worstLine = [...overloadedLines].sort((a, b) => b.loadRatio - a.loadRatio)[0];
-    faultDetails = {
-      primaryFaultNodeId: worstNode?.id,
-      worstVoltage: worstNode?.voltage?.toFixed(3),
-      worstLineId: worstLine?.id,
-      worstLoadRatio: worstLine?.loadRatio?.toFixed(2),
-      reactiveDeficit: parseFloat((factoryQ - capQ).toFixed(1)),
-      failedNodeCount: failedNodes.length,
-      overloadedLineCount: overloadedLines.length,
-      factoryLoad: factoryDemand,
-      totalLoad,
-      totalGeneration,
-    };
-  }
-
-  const voltageAvg = (
-    newNodes.substation.voltage +
-    newNodes.residential1.voltage +
-    newNodes.residential2.voltage +
-    newNodes.residential3.voltage
-  ) / 4;
+  });
 
   return {
     nodes: newNodes,
     lines: newLines,
-    factory: newFactory,
     tick: tick + 1,
-    totalLoad,
-    totalGeneration,
+    totalLoad: parseFloat(totalLoad.toFixed(2)),
+    totalGeneration: parseFloat(totalGeneration.toFixed(2)),
     gridFrequency,
+    coalRPM,
     faultActive,
     faultDetails,
-    voltageAvg,
+    voltageAvg: parseFloat(voltageAvg.toFixed(4)),
+    selfHealingActive,
+    selfHealingLog: selfHealingActive
+      ? `Ring tie active: East Zone re-energizing North sector at ${(vNorthHealed * 100).toFixed(1)}% V`
+      : null,
+    cyberIntrusionActive: cyberFlag,
   };
 }

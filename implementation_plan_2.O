@@ -1,0 +1,261 @@
+# Smart Grid Digital Twin — Full 5-Layer Architecture Overhaul
+
+## Overview
+
+Transform the existing microgrid simulation into a comprehensive, industry-grade **5-Layer City Power Grid Digital Twin**, implementing every entity, attribute, and physics model from the blueprint. The current app has ~5 nodes (substation, solar, 3 residential, optional factory/capacitor). The new system will have **14+ distinct entities** across 5 hierarchical layers with real-time telemetry streaming for every asset.
+
+---
+
+## Architecture Summary
+
+### Current State
+- 1 substation, 1 solar farm, 3 residential zones, optional factory/capacitor
+- Simple per-unit voltage drop model
+- Basic fault detection (only factory-triggered)
+- 5 power lines
+
+### Target State (5-Layer City Grid)
+- **Layer 1**: Coal Power Plant + Solar Farm (Bulk Generation) → ~3 entities
+- **Layer 2**: Primary HV Substation + Heavy Industry Complex (City Gateway) → ~3 entities  
+- **Layer 3**: Zone Distribution Substations + Automated RMUs (Urban Veins) → ~5 entities
+- **Layer 4**: Distribution Transformers + Smart Meters (Intelligent Edge) → ~4 entities
+- **Layer 5**: Data pipeline with per-entity telemetry streams
+- ~15 power lines with voltage-appropriate simulation
+
+---
+
+## Proposed Changes
+
+### Component 1: `gridStore.js` — Complete topology rewrite
+
+#### [MODIFY] [gridStore.js](file:///d:/Smart-Grid-Digital-Twin/src/store/gridStore.js)
+
+Full replacement of `INITIAL_NODES`, `INITIAL_LINES`, and store actions.
+
+**New Node Roster:**
+
+| ID | Label | Model GLB | Layer |
+|---|---|---|---|
+| `coalPlant` | Coal Power Plant | `coal plant.glb` | L1 |
+| `solarFarm` | Solar Farm | `solar_panels.glb` | L1 |
+| `hvSubstation` | HV Primary Substation | `hv_substation.glb` | L2 |
+| `heavyIndustry` | Heavy Industry Complex | `factory.glb` | L2 |
+| `zoneSub_north` | Zone Sub — North | `hv_substation.glb` | L3 |
+| `zoneSub_east` | Zone Sub — East | `hv_substation.glb` | L3 |
+| `zoneSub_west` | Zone Sub — West | `hv_substation.glb` | L3 |
+| `rmu_north` | RMU North-A | `ring_main_unit.glb` | L3 |
+| `rmu_east` | RMU East-A | `ring_main_unit.glb` | L3 |
+| `distTransformer_alpha` | Dist. Transformer α | `substation.glb` | L4 |
+| `distTransformer_beta` | Dist. Transformer β | `substation.glb` | L4 |
+| `smartMeter_residential` | Residential Prosumers | `houses.glb` | L4 |
+| `smartMeter_hospital` | City Hospital | `houses.glb` | L4 |
+| `gasStabilizer` | Gas Stabilizer Plant | `gas_stabilizer_plant.glb` | L1 (reserve) |
+
+**New Line Topology:**
+- Coal Plant → HV Substation (HV Transmission Corridor, 220kV)
+- Solar Farm → HV Substation (Solar injection)
+- HV Substation → Zone Sub North (33kV sub-transmission)
+- HV Substation → Zone Sub East
+- HV Substation → Zone Sub West
+- HV Substation → Heavy Industry (direct 33kV tap)
+- Zone Sub North → RMU North-A (11kV feeder)
+- Zone Sub East → RMU East-A
+- RMU North-A → Dist. Transformer α (11kV→400V)
+- RMU East-A → Dist. Transformer β
+- Dist. Transformer α → Smart Meter Residential
+- Dist. Transformer β → Smart Meter Hospital
+- Zone Sub North ↔ Zone Sub East (ring tie for self-healing)
+
+**New Pragmatic Attributes per Entity:**
+
+| Entity | New Attributes |
+|---|---|
+| Coal Plant | `generator_rpm`, `active_power_mw`, `reactive_power_mvar`, `spinning_reserve_mw`, `ramp_up_rate_mw_per_min` |
+| Gas Stabilizer | Same as coal plant (spinning reserve provider) |
+| HV Transmission Line | `conductor_temp_celsius`, `line_sag_meters`, `apparent_power_mva` |
+| HV Substation | `transformer_oil_temp_c`, `tap_changer_position`, `incoming_voltage_kv`, `outgoing_voltage_kv`, `cyber_intrusion_flag` |
+| Heavy Industry | `heavy_machinery_load_kw`, `power_factor_ratio` |
+| Zone Sub | `feeder_breaker_status`, `phase_imbalance_percent` |
+| RMU | `fault_current_detected_amps`, `isolation_switch_state`, `telemetry_latency_ms` |
+| Dist. Transformer | `ambient_temp_celsius`, `load_saturation_percent`, `estimated_lifespan_remaining_days` |
+| Smart Meter | `net_metering_kw`, `ev_charging_draw_kw`, `harmonic_distortion_percent` |
+
+---
+
+### Component 2: `physicsEngine.js` — 5-Layer Physics
+
+#### [MODIFY] [physicsEngine.js](file:///d:/Smart-Grid-Digital-Twin/src/engine/physicsEngine.js)
+
+**New physics model:**
+
+1. **Layer 1 → 2 (Bulk → Gateway):** Coal plant base load + solar injection → HV substation. Track `conductor_temp_celsius` (rises with current²), `line_sag_meters` (proportional to temp), `apparent_power_mva = √(P²+Q²)`.
+
+2. **Layer 2 (Gateway):** HV substation `transformer_oil_temp_c` = f(load%), `tap_changer_position` adjusts to maintain `outgoing_voltage_kv`. `cyber_intrusion_flag` triggers randomly ~0.1% per tick.
+
+3. **Layer 3 (Distribution):** Zone subs compute `phase_imbalance_percent`. RMUs monitor `fault_current_detected_amps`, can trip `isolation_switch_state` → initiates self-healing (auto-reroute via ring tie).
+
+4. **Layer 4 (Edge):** Distribution transformer `load_saturation_percent` drives `estimated_lifespan_remaining_days` decay (overload events subtract days). Smart meters compute `net_metering_kw` (negative during solar export), `ev_charging_draw_kw` (time-of-day spike at 18:00-22:00), `harmonic_distortion_percent`.
+
+5. **Self-Healing Logic:** When RMU detects fault current and `isolation_switch_state` flips to true, a backup path via the ring tie re-energizes affected zone (feeder_breaker_status transitions TRIPPED → CLOSED via alternate path).
+
+6. **Grid Frequency:** Driven by coal plant RPM deviation from 3000 RPM (50Hz sync). `generator_rpm` adjusts based on load-gen imbalance.
+
+---
+
+### Component 3: 3D Node Components — New Entities
+
+#### [NEW] `CoalPlantNode.jsx`
+- Uses `coal plant.glb`
+- Animated smokestacks, RPM gauge indicator
+- Status beacon + telemetry label
+
+#### [NEW] `GasStabilizerNode.jsx`  
+- Uses `gas_stabilizer_plant.glb`
+- Shown as spinning reserve (dimmer when standby, bright when active)
+
+#### [NEW] `HVSubstationNode.jsx`
+- Uses `hv_substation.glb` (the large compound model)
+- Shows `cyber_intrusion_flag` with red flashing alert
+- `tap_changer_position` displayed in label
+
+#### [NEW] `ZoneSubstationNode.jsx`
+- Uses `hv_substation.glb` (smaller scale)
+- Shows `feeder_breaker_status` color: CLOSED=green, OPEN=gray, TRIPPED=red
+
+#### [NEW] `RMUNode.jsx`
+- Uses `ring_main_unit.glb`
+- Shows `isolation_switch_state` with toggle visual
+- Fault detection animation (spark effect when `fault_current_detected_amps` > threshold)
+
+#### [NEW] `DistTransformerNode.jsx`
+- Uses `substation.glb` (single transformer model)
+- Shows `load_saturation_percent` bar
+- Lifespan indicator that turns amber when days < 365
+
+#### [NEW] `SmartMeterNode.jsx`
+- Uses `houses.glb`
+- Shows EV charging indicator (animated when `ev_charging_draw_kw` > 0)
+- Net metering arrow (green up = exporting, red down = consuming)
+
+#### [MODIFY] `HeavyIndustryNode.jsx` (rename from FactoryNode)
+- Keep `factory.glb`
+- Add `power_factor_ratio` display (formatted as `cos(θ)`)
+
+---
+
+### Component 4: `GridCanvas.jsx` — Expanded Scene
+
+#### [MODIFY] [GridCanvas.jsx](file:///d:/Smart-Grid-Digital-Twin/src/components/canvas/GridCanvas.jsx)
+
+- Import and render all 14 new node types
+- Expand ground plane to 300×300
+- Add `HVTransmissionLine` component for Layer 1 lines (thicker towers, higher wire elevation)
+- Update `PowerLine` to distinguish HV vs. distribution lines visually
+
+---
+
+### Component 5: `PowerLine.jsx` — Multi-voltage Lines
+
+#### [MODIFY] [PowerLine.jsx](file:///d:/Smart-Grid-Digital-Twin/src/components/canvas/PowerLine.jsx)
+
+- Accept `voltageLevel` prop: `'hv'` (220kV), `'sub'` (33kV), `'dist'` (11kV), `'lv'` (400V)
+- HV lines: use `Wooden Utility pole.glb` × more towers, wire elevation 5m+, thicker tube
+- Distribution lines: fewer towers, lower elevation, thinner tube
+- Color: HV=orange, 33kV=yellow, 11kV=blue, 400V=gray
+
+---
+
+### Component 6: UI Panels — Full Telemetry Dashboard
+
+#### [MODIFY] `ExplainabilityPanel.jsx`
+- Add entity-type aware sections for all 9 entity types
+- Show all pragmatic attributes per entity type
+- Add `apparent_power_mva` calculation: `√(P²+Q²)` shown live
+- Add `power_factor_ratio` = `cos(θ) = P/S` shown live
+
+#### [MODIFY] `ControlPanel.jsx`
+- Add RMU self-healing control panel (manual isolation trigger)
+- Add Gas Stabilizer spin-up button
+- Add cyber intrusion simulation toggle
+- Add EV charging surge toggle (spikes residential demand)
+
+#### [MODIFY] `StatusBar.jsx`
+- Add grid frequency with generator RPM correlation
+- Add `cyber_intrusion_flag` alert indicator
+- Add self-healing status indicator
+
+---
+
+### Component 7: `App.jsx` — Extended simulation loop
+
+#### [MODIFY] [App.jsx](file:///d:/Smart-Grid-Digital-Twin/src/App.jsx)
+
+- Handle RMU fault detection → auto self-healing loop
+- Handle `cyber_intrusion_flag` events → AI advisor trigger
+- Handle `estimated_lifespan_remaining_days` decay
+- Handle EV charging time-of-day surge (18:00-22:00)
+
+---
+
+## Spatial Layout
+
+The 3D scene will use a **radial city layout**:
+
+```
+                    [Coal Plant] (-30, 0, -35)
+                         |
+                    [Solar Farm] (-18, 0, -30)
+                         |
+            [HV Primary Substation] (0, 0, -20)   [Gas Stabilizer] (20, 0, -30)
+           /           |          \
+    [Zone Sub West]  [Zone Sub North]  [Zone Sub East]
+    (-20, 0, 0)       (0, 0, 5)        (20, 0, 0)
+          |               |                |
+    [Heavy Industry]  [RMU North]      [RMU East]
+    (-22, 0, 10)      (0, 0, 15)       (20, 0, 12)
+                          |                |
+                    [Dist. Trans α]    [Dist. Trans β]
+                    (-8, 0, 22)        (12, 0, 22)
+                          |                |
+                  [Smart Meter Res]  [Smart Meter Hospital]
+                  (-8, 0, 30)        (12, 0, 30)
+```
+
+---
+
+## Key Design Decisions
+
+> [!IMPORTANT]
+> **Self-Healing Ring**: The North↔East ring tie is the core "smart grid" feature. When RMU North detects a fault current, it isolates the faulted segment, and the ring tie path automatically re-energizes the load from East. This is the key differentiator from the old simple topology.
+
+> [!IMPORTANT]
+> **GLB Mapping**: Per user instructions: `hv_substation.glb` = compound substation facility (Layer 2 & 3). `substation.glb` = single distribution transformer (Layer 4). `ring_main_unit.glb` = RMU street-level switch. `coal plant.glb` = coal plant. `gas_stabilizer_plant.glb` = gas plant.
+
+> [!WARNING]
+> **Breaking Change**: The old node IDs (`substation`, `residential1-3`) are completely replaced. The AI Advisor prompts will need updating to reference new entity IDs. Old `resetGrid` will point to new topology.
+
+---
+
+## Verification Plan
+
+### Automated
+- `npm run dev` — check no import/compilation errors
+- Visual: confirm all 14 nodes render with correct GLB models
+- Visual: confirm power lines connect correct nodes
+- Visual: confirm entity-type telemetry renders in ExplainabilityPanel
+
+### Manual Verification
+1. Time-of-day cycle: solar output rises/falls correctly
+2. EV charging surge at 18:00: smart meter demand spikes
+3. Coal plant RPM tracks 50Hz sync (3000 RPM at balance)
+4. RMU self-healing: trigger a fault, watch breaker trip → ring path activates
+5. Cyber intrusion flag: random RED alert on HV substation
+6. Dist. transformer lifespan decaying under overload
+7. AI advisor triggers on cyber intrusion + fault events
+
+---
+
+## Open Questions
+
+> [!NOTE]
+> No blocking questions — the blueprint is comprehensive. I will proceed with one clarifying assumption: the "Heavy Industry Complex" will be a **fixed node** (not drag-to-place) in the new topology, as it's part of the foundational city infrastructure at Layer 2. The old placement mechanic for factories will be repurposed as a "Surge Load Event" toggle.

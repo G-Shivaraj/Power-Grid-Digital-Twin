@@ -1,5 +1,6 @@
 /**
- * useLLMAdvisor — OpenRouter (gpt-4o-mini) integration hook
+ * useLLMAdvisor — OpenRouter (gpt-4o-mini) integration
+ * Updated for 5-Layer City Power Grid Digital Twin.
  * Mock falls back gracefully when no API key is configured.
  *
  * To enable real LLM: set VITE_OPENROUTER_API_KEY in a .env file.
@@ -9,110 +10,127 @@ const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const MODEL = 'openai/gpt-4o-mini';
 const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || '';
 
-// ── Prompt builder ────────────────────────────────────────────────────────────
+// ── System prompt ─────────────────────────────────────────────────────────────
 function buildSystemPrompt() {
-  return `You are an expert Power Systems Engineer and AI Operations Advisor for a Smart Grid Digital Twin.
-Your role is to analyze real-time grid telemetry data provided as JSON, diagnose faults, explain them in plain English,
-and recommend specific, actionable hardware or operational interventions.
+  return `You are an expert Power Systems Engineer and AI Operations Advisor for a 5-Layer City Smart Grid Digital Twin.
+The grid has 14 entities across 5 layers:
+- Layer 1: Coal Plant, Solar Farm, Gas Peaker (Bulk Generation)
+- Layer 2: HV Primary Substation (220kV/33kV), Heavy Industry Complex
+- Layer 3: Zone Substations (33kV/11kV), Ring Main Units (self-healing)
+- Layer 4: Distribution Transformers (11kV/400V), Smart Meters (Prosumers)
 
-When analyzing a fault, structure your response in exactly two parts:
-1. **Fault Analysis** — 2-3 sentences explaining what happened mathematically (voltage levels, reactive power deficit, line overload).
-2. **Recommendation** — One specific hardware or operational fix with technical specs (e.g., "Deploy a 5 MVAR Shunt Capacitor Bank at Node 7").
+When analyzing a fault or cyber event, structure your response in exactly two parts:
+1. **Fault Analysis** — 2-3 sentences explaining what happened (reference voltage levels, RMU isolation, harmonic distortion, oil temperatures, RPM deviations).
+2. **Recommendation** — One specific operational fix with technical specs.
 
-Be precise and technical but understandable to a non-engineer operations manager. Mention specific node names, voltages, and power values from the data.`;
+Be precise and technical. Reference specific node names, voltages, and layer designations from the telemetry data.`;
 }
 
+// ── Prompt builders ───────────────────────────────────────────────────────────
 function buildFaultPrompt(gridState) {
-  const { nodes, lines, factory, simulation, capacitor } = gridState;
-  const faultDetails = simulation.faultDetails;
+  const { nodes, lines, simulation } = gridState;
 
   const nodesSummary = Object.values(nodes).map(n => ({
-    id: n.id, label: n.label, voltage_pu: n.voltage?.toFixed(3),
-    activePower_MW: n.activePower?.toFixed(1),
-    reactivePower_MVAR: n.reactivePower?.toFixed(1),
+    id: n.id,
+    label: n.label,
+    layer: n.layer,
+    type: n.type,
+    voltage_pu: n.voltage?.toFixed(3),
     status: n.status,
-  }));
-
-  const linesSummary = lines.map(l => ({
-    id: l.id, from: l.from, to: l.to,
-    currentFlow_MW: l.currentFlow?.toFixed(1),
-    thermalLimit_MW: l.thermalLimit,
-    loadRatio: l.loadRatio?.toFixed(2),
-    status: l.status,
+    ...(n.generator_rpm !== undefined && { generator_rpm: n.generator_rpm?.toFixed(0) }),
+    ...(n.transformer_oil_temp_c !== undefined && { oil_temp_c: n.transformer_oil_temp_c?.toFixed(1) }),
+    ...(n.cyber_intrusion_flag !== undefined && { cyber_intrusion: n.cyber_intrusion_flag }),
+    ...(n.feeder_breaker_status !== undefined && { breaker: n.feeder_breaker_status }),
+    ...(n.isolation_switch_state !== undefined && { rmu_isolated: n.isolation_switch_state }),
+    ...(n.fault_current_detected_amps !== undefined && { fault_amps: n.fault_current_detected_amps }),
+    ...(n.load_saturation_percent !== undefined && { load_sat_pct: n.load_saturation_percent?.toFixed(1) }),
+    ...(n.net_metering_kw !== undefined && { net_metering_kw: n.net_metering_kw }),
+    ...(n.harmonic_distortion_percent !== undefined && { thd_pct: n.harmonic_distortion_percent?.toFixed(2) }),
   }));
 
   const data = {
     timestamp: new Date().toISOString(),
-    gridFrequency_Hz: simulation.gridFrequency?.toFixed(2),
+    gridFrequency_Hz: simulation.gridFrequency?.toFixed(4),
     totalLoad_MW: simulation.totalLoad?.toFixed(1),
     totalGeneration_MW: simulation.totalGeneration?.toFixed(1),
-    faultDetails,
-    factory: factory ? {
-      industrialLoad_MW: factory.industrialLoad,
-      powerFactor: factory.powerFactor,
-      reactiveDemand_MVAR: (factory.industrialLoad * Math.tan(Math.acos(factory.powerFactor))).toFixed(1),
-      voltage_pu: factory.voltage?.toFixed(3),
-    } : null,
-    capacitorDeployed: !!capacitor,
+    selfHealingActive: simulation.selfHealingActive,
+    selfHealingLog: simulation.selfHealingLog,
+    cyberIntrusionActive: simulation.cyberIntrusionActive,
+    surgeEventActive: simulation.surgeEventActive,
+    faultDetails: simulation.faultDetails,
     nodes: nodesSummary,
-    lines: linesSummary,
+    criticalLines: lines
+      .filter(l => l.status !== 'optimal')
+      .map(l => ({ id: l.id, from: l.from, to: l.to, flow: l.currentFlow, limit: l.thermalLimit, ratio: l.loadRatio?.toFixed(2), status: l.status })),
   };
 
-  return `GRID FAULT DETECTED. Analyze the following real-time telemetry and provide your diagnosis and recommendation:\n\n${JSON.stringify(data, null, 2)}`;
+  return `CITY GRID FAULT DETECTED. Analyze the following 5-layer grid telemetry and provide diagnosis and recommendation:\n\n${JSON.stringify(data, null, 2)}`;
 }
 
-function buildStabilizationPrompt(gridState) {
-  return `The 5 MVAR Shunt Capacitor Bank has been deployed. Confirm grid stabilization based on this updated telemetry and provide a brief status report:\n\n${JSON.stringify({
-    nodes: Object.values(gridState.nodes).map(n => ({ id: n.id, label: n.label, voltage_pu: n.voltage?.toFixed(3), status: n.status })),
-    simulation: {
-      gridFrequency_Hz: gridState.simulation.gridFrequency?.toFixed(2),
-      totalLoad_MW: gridState.simulation.totalLoad?.toFixed(1),
-      faultActive: gridState.simulation.faultActive,
+function buildCyberPrompt(gridState) {
+  const { nodes, simulation } = gridState;
+  const hvSub = nodes.hvSubstation;
+  return `CYBER INTRUSION DETECTED at HV Primary Substation SCADA. Analyze the following telemetry:\n\n${JSON.stringify({
+    hvSubstation: {
+      cyber_intrusion_flag: hvSub?.cyber_intrusion_flag,
+      transformer_oil_temp_c: hvSub?.transformer_oil_temp_c?.toFixed(1),
+      tap_changer_position: hvSub?.tap_changer_position,
+      outgoing_voltage_kv: hvSub?.outgoing_voltage_kv,
+      voltage_pu: hvSub?.voltage?.toFixed(3),
     },
+    gridFrequency_Hz: simulation.gridFrequency?.toFixed(4),
+    totalLoad_MW: simulation.totalLoad?.toFixed(1),
+    tick: simulation.tick,
   }, null, 2)}`;
 }
 
 // ── Mock responses ────────────────────────────────────────────────────────────
 function getMockFaultResponse(gridState) {
-  const { factory, simulation } = gridState;
+  const { simulation, nodes } = gridState;
   const fd = simulation.faultDetails || {};
-  const factoryLoad = factory?.industrialLoad ?? 35;
-  const reactiveDeficit = fd.reactiveDeficit ?? '26.2';
-  const worstV = fd.worstVoltage ?? '0.821';
+  const selfHealing = simulation.selfHealingActive;
+  const minV = fd.minVoltage ?? '0.851';
+  const rmu = nodes.rmu_north;
+  const faultA = rmu?.fault_current_detected_amps?.toFixed(0) ?? '2840';
+
+  if (selfHealing) {
+    return {
+      explanation: `**Fault Analysis:** A voltage collapse on the Northern zone (${minV} pu) triggered automatic self-healing. RMU North-A detected a fault current of ${faultA}A and has isolated the faulted 11kV segment. The ring tie between Zone Sub North and Zone Sub East is now active, re-energizing the affected area from the eastern supply path. The self-healing response time was under 150ms, demonstrating ANSI C37.90 compliant protection coordination.`,
+      recommendation: `**Recommendation:** Dispatch maintenance crew to inspect the 11kV feeder between Zone Sub North and RMU North-A for physical conductor damage or insulation failure. After repair, re-close RMU North-A isolation switch to restore normal radial topology and release the ring tie. Verify Distribution Transformer α load saturation returns below 85% before reclosing.`,
+    };
+  }
 
   return {
-    explanation: `**Fault Analysis:** The newly connected Industrial Factory is drawing ${factoryLoad} MW at a power factor of ${factory?.powerFactor ?? 0.75}, generating a reactive power demand of ${reactiveDeficit} MVAR that the grid cannot supply locally. This has caused a severe voltage collapse at ${fd.primaryFaultNodeId ? fd.primaryFaultNodeId.replace(/([A-Z])/g, ' $1') : 'District Beta'}, dropping to ${worstV} per unit — well below the 0.95 pu acceptable threshold. The transmission lines feeding this zone are operating at ${fd.worstLoadRatio ? (fd.worstLoadRatio * 100).toFixed(0) : '142'}% of their thermal limit, triggering overload alarms across ${fd.overloadedLineCount ?? 2} circuits.`,
-    recommendation: `**Recommendation:** Deploy a **5 MVAR Shunt Capacitor Bank** at the Point of Common Coupling near the factory connection point. This will provide local reactive power compensation, reducing the reactive power import over the transmission lines and restoring bus voltages to within the 0.95–1.05 pu operating band. Additionally, consider requesting the substation operator to raise the tap position by one step (+1.25% voltage boost) to provide additional voltage support during peak industrial demand.`,
+    explanation: `**Fault Analysis:** Grid voltage has collapsed to ${minV} pu at the worst-case bus, ${fd.surgeActive ? 'triggered by an Industrial Surge Event pushing the Heavy Industry Complex to 165% of rated load' : 'due to excessive reactive power demand on the 33kV sub-transmission network'}. The Coal Plant RPM has deviated from 3000 RPM, indicating the governor is fighting load-gen imbalance. Zone substations report phase imbalance above 2% indicating uneven load distribution across three phases.`,
+    recommendation: `**Recommendation:** ${fd.surgeActive ? 'Curtail the industrial surge load immediately and activate the Gas Peaker Plant spinning reserve (60MW available at 25 MW/min ramp rate)' : 'Activate the Gas Peaker spinning reserve to increase generation headroom and reduce load-gen imbalance'}. Also verify tap changer position at HV Primary Substation — raise by 2 tap positions (+0.8% voltage boost) to compensate for the voltage depression.`,
   };
 }
 
-function getMockStabilizationResponse() {
+function getMockCyberResponse() {
   return {
-    explanation: `**Grid Stabilized ✓** The 5 MVAR Shunt Capacitor Bank deployment has been successful. All bus voltages have recovered to within normal operating limits (0.97–1.01 pu range). The reactive power deficit has been reduced from the critical level to a manageable surplus, and transmission line loading has dropped back below the 75% thermal limit on all circuits. Grid frequency has stabilized at 50.0 Hz. The Digital Twin confirms the physical grid intervention has resolved the fault condition — all residential districts are fully restored.`,
-    recommendation: null,
+    explanation: `**Cyber Threat Analysis:** Unauthorized telemetry injection detected on the SCADA channel at the HV Primary Substation. The intrusion signature matches a Man-in-the-Middle (MitM) attack pattern targeting Modbus/DNP3 protocol packets. The attacker may be attempting to spoof tap changer position readings to induce an artificial under-voltage condition, masking a deliberate load shedding event. The IEC 62351 encryption layer has flagged 3 anomalous measurement frames in the last 500ms.`,
+    recommendation: `**Recommendation:** Immediately isolate the SCADA communication channel to the HV Substation and switch to manual tap changer control. Deploy backup RTU encryption certificates and activate the cyber incident response protocol per NERC CIP-007. Alert the Operations Control Center and notify grid security team. Do NOT operate the tap changer remotely until the communication channel is re-authenticated.`,
   };
 }
 
-// ── Main hook ─────────────────────────────────────────────────────────────────
+// ── Main export ────────────────────────────────────────────────────────────────
 export async function callLLMAdvisor(gridState, mode = 'fault') {
   const useMock = !API_KEY;
 
   if (useMock) {
-    // Simulate network delay
     await new Promise(r => setTimeout(r, 1800));
-    if (mode === 'stabilization') return getMockStabilizationResponse();
+    if (mode === 'cyber') return getMockCyberResponse();
     return getMockFaultResponse(gridState);
   }
 
-  // ── Real OpenRouter call ────────────────────────────────────────────────
+  // ── Real OpenRouter call ──────────────────────────────────────────────────
+  const userContent = mode === 'cyber'
+    ? buildCyberPrompt(gridState)
+    : buildFaultPrompt(gridState);
+
   const messages = [
     { role: 'system', content: buildSystemPrompt() },
-    {
-      role: 'user',
-      content: mode === 'stabilization'
-        ? buildStabilizationPrompt(gridState)
-        : buildFaultPrompt(gridState),
-    },
+    { role: 'user',   content: userContent },
   ];
 
   const res = await fetch(OPENROUTER_URL, {
@@ -121,7 +139,7 @@ export async function callLLMAdvisor(gridState, mode = 'fault') {
       'Authorization': `Bearer ${API_KEY}`,
       'Content-Type': 'application/json',
       'HTTP-Referer': window.location.origin,
-      'X-Title': 'Smart Grid Digital Twin',
+      'X-Title': 'Smart City Grid Digital Twin',
     },
     body: JSON.stringify({ model: MODEL, messages, max_tokens: 600 }),
   });
@@ -134,7 +152,6 @@ export async function callLLMAdvisor(gridState, mode = 'fault') {
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content ?? '';
 
-  // Split on **Recommendation:** if present
   const recMatch = text.match(/\*\*Recommendation[:\s]/i);
   if (recMatch) {
     const idx = text.indexOf(recMatch[0]);

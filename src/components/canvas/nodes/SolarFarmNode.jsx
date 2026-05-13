@@ -10,15 +10,11 @@ const STATUS_COLORS = {
   failed: new THREE.Color('#EF4444'),
 };
 
-
-// ── GLB solar panels model ───────────────────────────────────────────────────
 function SolarModel({ node }) {
   const { scene } = useGLTF('/models/solar_panels.glb');
   const clonedScene = useMemo(() => scene.clone(true), [scene]);
-  const groupRef = useRef();
   const materialsRef = useRef([]);
-  const color = STATUS_COLORS[node.status] || STATUS_COLORS.optimal;
-  const solarFraction = node.solarOutput > 0 ? node.solarOutput / node.maxSolarOutput : 0;
+  const solarFraction = node.maxSolarOutput > 0 ? (node.solarOutput ?? 0) / node.maxSolarOutput : 0;
 
   useEffect(() => {
     const mats = [];
@@ -29,7 +25,7 @@ function SolarModel({ node }) {
         if (child.material) {
           child.material = child.material.clone();
           child.material.emissive = new THREE.Color('#3b82f6');
-          child.material.emissiveIntensity = 0.15 + solarFraction * 0.4;
+          child.material.emissiveIntensity = 0.1 + solarFraction * 0.45;
           mats.push(child.material);
         }
       }
@@ -37,19 +33,17 @@ function SolarModel({ node }) {
     materialsRef.current = mats;
   }, [clonedScene, solarFraction]);
 
-  // Subtle shimmer effect on materials
   useFrame(({ clock }) => {
     materialsRef.current.forEach((mat, i) => {
-      mat.emissiveIntensity = 0.15 + Math.sin(clock.getElapsedTime() * 1.5 + i * 0.4) * 0.08 * solarFraction;
+      mat.emissiveIntensity = 0.1 + Math.sin(clock.getElapsedTime() * 1.5 + i * 0.4) * 0.08 * solarFraction;
     });
   });
 
   return (
-    <group ref={groupRef}>
+    <group>
       <Resize scale={8.0}>
         <primitive object={clonedScene} />
       </Resize>
-      {/* Output indicator */}
       <mesh position={[0, 2.5, 0]}>
         <sphereGeometry args={[0.18, 10, 10]} />
         <meshStandardMaterial
@@ -58,7 +52,7 @@ function SolarModel({ node }) {
           emissiveIntensity={solarFraction * 2}
         />
       </mesh>
-      <pointLight position={[0, 2.5, 0]} color={solarFraction > 0.1 ? '#FBBF24' : '#94A3B8'} intensity={solarFraction * 2} distance={6} />
+      <pointLight position={[0, 2.5, 0]} color={solarFraction > 0.1 ? '#FBBF24' : '#94A3B8'} intensity={solarFraction * 2.5} distance={8} />
     </group>
   );
 }
@@ -78,27 +72,26 @@ export default function SolarFarmNode({ node }) {
     }
   });
 
-  return (
-    <group
-      position={node.position}
-      ref={groupRef}
-      onClick={(e) => { e.stopPropagation(); selectNode(node.id); }}
-    >
-      <SolarModel node={node} />
+  const solarFraction = node.maxSolarOutput > 0 ? (node.solarOutput ?? 0) / node.maxSolarOutput : 0;
 
+  return (
+    <group position={node.position} ref={groupRef} onClick={(e) => { e.stopPropagation(); selectNode(node.id); }}>
+      <SolarModel node={node} />
       {isSelected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
           <ringGeometry args={[2.8, 3.1, 32]} />
           <meshBasicMaterial color="#0EA5E9" transparent opacity={0.8} />
         </mesh>
       )}
-
-      <Billboard position={[0, 4.5, 0]}>
-        <Text fontSize={0.32} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
+      <Billboard position={[0, 5.5, 0]}>
+        <Text fontSize={0.33} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>
-        <Text fontSize={0.26} color="#d97706" fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -0.42, 0]} outlineWidth={0.02} outlineColor="white">
-          {`☀ ${node.solarOutput?.toFixed(1)} / ${node.maxSolarOutput} MW`}
+        <Text fontSize={0.25} color="#6B7280" anchorX="center" anchorY="middle" position={[0, -0.45, 0]} outlineWidth={0.02} outlineColor="white">
+          ☀ L1 — Renewable Generation
+        </Text>
+        <Text fontSize={0.27} color="#d97706" fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -0.88, 0]} outlineWidth={0.02} outlineColor="white">
+          {`${node.solarOutput?.toFixed(1)} / ${node.maxSolarOutput} MW (${(solarFraction * 100).toFixed(0)}%)`}
         </Text>
       </Billboard>
     </group>

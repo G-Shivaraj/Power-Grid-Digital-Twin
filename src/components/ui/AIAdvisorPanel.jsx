@@ -44,7 +44,6 @@ function MessageBubble({ msg }) {
 export default function AIAdvisorPanel() {
   const aiAdvisor = useGridStore(s => s.aiAdvisor);
   const simulation = useGridStore(s => s.simulation);
-  const deployCapacitor = useGridStore(s => s.deployCapacitor);
   const clearAIMessages = useGridStore(s => s.clearAIMessages);
   const messagesEndRef = useRef(null);
 
@@ -87,7 +86,7 @@ export default function AIAdvisorPanel() {
             </div>
             <div>
               <p className="text-sm font-semibold text-slate-500">AI Advisor on Standby</p>
-              <p className="text-xs text-slate-400 mt-1">Place the factory on the grid to<br />trigger a fault analysis.</p>
+              <p className="text-xs text-slate-400 mt-1">Trigger a scenario (Surge/Cyber)<br />or wait for a grid fault event.</p>
             </div>
           </div>
         )}
@@ -111,21 +110,11 @@ export default function AIAdvisorPanel() {
 
       {/* Action area */}
       <div className="flex-shrink-0 p-3 border-t border-grid-border bg-white/50 space-y-2">
-        {/* Deploy recommendation button */}
-        {aiAdvisor.recommendation && !aiAdvisor.capacitorDeployed && (
-          <button
-            onClick={deployCapacitor}
-            className="w-full py-2.5 bg-gradient-to-r from-sky-500 to-blue-600 text-white text-xs font-bold rounded-xl hover:from-sky-600 hover:to-blue-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 animate-pulse-slow"
-          >
-            <CheckCircle size={14} />
-            Deploy AI Recommendation: Capacitor Bank
-          </button>
-        )}
-
-        {aiAdvisor.capacitorDeployed && (
-          <div className="w-full py-2 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold rounded-xl flex items-center justify-center gap-2">
-            <CheckCircle size={13} />
-            Capacitor Bank Deployed ✓
+        {/* Recommendation display */}
+        {aiAdvisor.recommendation && (
+          <div className="w-full py-2 px-3 bg-sky-50 border border-sky-200 text-sky-800 text-xs font-semibold rounded-xl">
+            <p className="font-bold text-sky-700 mb-0.5">📋 AI Recommendation:</p>
+            <p className="text-xs leading-relaxed">{aiAdvisor.recommendation}</p>
           </div>
         )}
 
