@@ -11,11 +11,15 @@ const STATUS_LINE_COLORS = {
 
 // Voltage-level visual config
 const VOLTAGE_CONFIG = {
-  hv:   { tubeRadius: 0.035, towerScale: 4.5, wireElevation: 5.5, particleSize: 0.11, particleCount: 8, wireColor: '#475569' },
-  sub:  { tubeRadius: 0.022, towerScale: 3.2, wireElevation: 3.8, particleSize: 0.09, particleCount: 7, wireColor: '#374151' },
-  dist: { tubeRadius: 0.015, towerScale: 2.2, wireElevation: 2.8, particleSize: 0.07, particleCount: 5, wireColor: '#374151' },
-  lv:   { tubeRadius: 0.010, towerScale: 0,   wireElevation: 1.8, particleSize: 0.055,particleCount: 4, wireColor: '#6B7280' },
+  hv:   { tubeRadius: 0.035, towerScale: 4.5, wireElevation: 4.2, particleSize: 0.11, particleCount: 8, wireColor: '#000000' },
+  sub:  { tubeRadius: 0.022, towerScale: 3.2, wireElevation: 2.9, particleSize: 0.09, particleCount: 7, wireColor: '#000000' },
+  dist: { tubeRadius: 0.015, towerScale: 2.2, wireElevation: 2.0, particleSize: 0.07, particleCount: 5, wireColor: '#000000' },
+  lv:   { tubeRadius: 0.010, towerScale: 0,   wireElevation: 1.2, particleSize: 0.055,particleCount: 4, wireColor: '#000000' },
 };
+
+// Exclusion radius per component type — towers/poles must not be placed within
+// this distance (xz-plane) of any node center
+const EXCLUSION_RADIUS = 8;
 
 function PowerlineTower({ position, rotation = 0, scale = 3.2 }) {
   const { scene } = useGLTF('/models/powerline.glb');
@@ -69,7 +73,21 @@ function WoodenPole({ position, rotation = 0 }) {
   );
 }
 
-export default function PowerLine({ line, fromPos, toPos }) {
+/**
+ * Check if a 2D point (xz-plane) falls inside any node's exclusion zone.
+ * Returns true if it's too close.
+ */
+function isInsideExclusionZone(x, z, nodePositions) {
+  for (const pos of nodePositions) {
+    const dx = x - pos[0];
+    const dz = z - pos[2];
+    const distSq = dx * dx + dz * dz;
+    if (distSq < EXCLUSION_RADIUS * EXCLUSION_RADIUS) return true;
+  }
+  return false;
+}
+
+export default function PowerLine({ line, fromPos, toPos, nodePositions = [] }) {
   const vLevel = line.voltageLevel ?? 'sub';
   const cfg = VOLTAGE_CONFIG[vLevel] || VOLTAGE_CONFIG.sub;
   const isRingTie = line.isRingTie;
@@ -83,14 +101,26 @@ export default function PowerLine({ line, fromPos, toPos }) {
   const lineColor = STATUS_LINE_COLORS[line.status] || STATUS_LINE_COLORS.optimal;
 
   const curve = useMemo(() => {
-    const from = new THREE.Vector3(...fromPos);
-    const to   = new THREE.Vector3(...toPos);
-    from.y = cfg.wireElevation;
-    to.y   = cfg.wireElevation * 0.85;
-    const mid = from.clone().lerp(to, 0.5);
-    mid.y = cfg.wireElevation + (isRingTie ? 1.5 : 1.2);
-    return new THREE.QuadraticBezierCurve3(from, mid, to);
-  }, [fromPos[0], fromPos[1], fromPos[2], toPos[0], toPos[1], toPos[2], cfg.wireElevation, isRingTie]);
+    const startFlat = new THREE.Vector3(...fromPos);
+    const endFlat   = new THREE.Vector3(...toPos);
+    startFlat.y = 0; endFlat.y = 0;
+    
+    // v0: Start connection point dipping downwards to touch the source entity directly
+    const v0 = new THREE.Vector3(startFlat.x, 0.6, startFlat.z);
+    
+    // v1: First control point rises smoothly to the utility pole crossarm elevation
+    const v1 = startFlat.clone().lerp(endFlat, 0.2);
+    v1.y = cfg.wireElevation + (isRingTie ? 0.2 : 0);
+    
+    // v2: Second control point maintains crossarm elevation across the entire middle span
+    const v2 = startFlat.clone().lerp(endFlat, 0.8);
+    v2.y = cfg.wireElevation + (isRingTie ? 0.2 : 0);
+    
+    // v3: End connection point dipping downwards to touch destination entity directly
+    const v3 = new THREE.Vector3(endFlat.x, 0.6, endFlat.z);
+    
+    return new THREE.CubicBezierCurve3(v0, v1, v2, v3);
+  }, [fromPos[0], fromPos[2], toPos[0], toPos[2], cfg.wireElevation, isRingTie]);
 
   const towerData = useMemo(() => {
     if (cfg.towerScale === 0) return []; // LV lines have no towers
@@ -101,11 +131,20 @@ export default function PowerLine({ line, fromPos, toPos }) {
     const dist = dir.length();
     if (dist < 4) return [];
     const fractions = dist > 14 ? [0.25, 0.5, 0.75] : [0.4, 0.6];
-    return fractions.map(f => {
+
+    // Build candidate positions, then filter/shift away from exclusion zones
+    const candidates = fractions.map(f => {
       const p = from.clone().lerp(to, f);
-      return { position: [p.x, 0, p.z], rotation };
+      return { position: [p.x, 0, p.z], rotation, fraction: f };
     });
-  }, [fromPos[0], fromPos[2], toPos[0], toPos[2]]);
+
+    // Filter out any tower that falls inside an exclusion zone
+    const filtered = candidates.filter(c =>
+      !isInsideExclusionZone(c.position[0], c.position[2], nodePositions)
+    );
+
+    return filtered;
+  }, [fromPos[0], fromPos[2], toPos[0], toPos[2], nodePositions]);
 
   useFrame((_, delta) => {
     if (!isActive) return;
@@ -180,3 +219,4 @@ export default function PowerLine({ line, fromPos, toPos }) {
 
 useGLTF.preload('/models/powerline.glb');
 useGLTF.preload('/models/Wooden Utility pole.glb');
+

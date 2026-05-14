@@ -1,6 +1,6 @@
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Text, Billboard, useGLTF, Resize } from '@react-three/drei';
+import { Text, Billboard, useGLTF, Resize, Center } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGridStore } from '../../../store/gridStore';
 
@@ -51,7 +51,9 @@ function RMUModel({ node }) {
   return (
     <group>
       <Resize scale={7.0}>
-        <primitive object={clonedScene} />
+        <Center disableY>
+          <primitive object={clonedScene} />
+        </Center>
       </Resize>
       {/* Isolation switch indicator */}
       <mesh position={[0, 4.0, 0]}>
@@ -106,16 +108,16 @@ export default function RMUNode({ node }) {
         </mesh>
       )}
       <Billboard position={[0, 5.8, 0]}>
-        <Text fontSize={0.32} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
+        <Text fontSize={0.42} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>
-        <Text fontSize={0.24} color="#6B7280" anchorX="center" anchorY="middle" position={[0, -0.44, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.31} color="#6B7280" anchorX="center" anchorY="middle" position={[0, -0.57, 0]} outlineWidth={0.02} outlineColor="white">
           ⚡ L3 — Ring Main Unit
         </Text>
-        <Text fontSize={0.27} color={faultColor} fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -0.84, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.35} color={faultColor} fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -1.09, 0]} outlineWidth={0.02} outlineColor="white">
           {`${node.fault_current_detected_amps?.toFixed(0)} A`}
         </Text>
-        <Text fontSize={0.24} color={latColor} anchorX="center" anchorY="middle" position={[0, -1.20, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.31} color={latColor} anchorX="center" anchorY="middle" position={[0, -1.56, 0]} outlineWidth={0.02} outlineColor="white">
           {`${switchText}  Lat:${node.telemetry_latency_ms?.toFixed(1)}ms`}
         </Text>
       </Billboard>

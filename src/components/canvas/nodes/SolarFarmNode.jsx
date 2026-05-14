@@ -96,14 +96,14 @@ export default function SolarFarmNode({ node }) {
           <meshBasicMaterial color="#0EA5E9" transparent opacity={0.8} />
         </mesh>
       )}
-      <Billboard position={[0, 7.5, 0]}>
-        <Text fontSize={0.33} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
+      <Billboard position={[0, 5.2, 0]}>
+        <Text fontSize={0.43} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>
-        <Text fontSize={0.25} color="#6B7280" anchorX="center" anchorY="middle" position={[0, -0.45, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.33} color="#6B7280" anchorX="center" anchorY="middle" position={[0, -0.59, 0]} outlineWidth={0.02} outlineColor="white">
           ☀ L1 — Renewable Generation
         </Text>
-        <Text fontSize={0.27} color="#d97706" fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -0.88, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.35} color="#d97706" fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -1.14, 0]} outlineWidth={0.02} outlineColor="white">
           {`${node.solarOutput?.toFixed(1)} / ${node.maxSolarOutput} MW (${(solarFraction * 100).toFixed(0)}%)`}
         </Text>
       </Billboard>

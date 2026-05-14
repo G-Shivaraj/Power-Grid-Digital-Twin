@@ -104,14 +104,14 @@ export default function GasStabilizerNode({ node }) {
           <meshBasicMaterial color="#0EA5E9" transparent opacity={0.8} />
         </mesh>
       )}
-      <Billboard position={[0, 12.8, 0]}>
-        <Text fontSize={0.36} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
+      <Billboard position={[0, 8.8, 0]}>
+        <Text fontSize={0.47} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>
-        <Text fontSize={0.27} color="#6B7280" anchorX="center" anchorY="middle" position={[0, -0.48, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.35} color="#6B7280" anchorX="center" anchorY="middle" position={[0, -0.62, 0]} outlineWidth={0.02} outlineColor="white">
           ⚡ L1 — Spinning Reserve
         </Text>
-        <Text fontSize={0.30} color={labelColor} fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -0.92, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.39} color={labelColor} fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -1.20, 0]} outlineWidth={0.02} outlineColor="white">
           {statusText}
         </Text>
       </Billboard>

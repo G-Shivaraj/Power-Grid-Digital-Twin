@@ -110,20 +110,20 @@ export default function SmartMeterNode({ node }) {
           <meshBasicMaterial color="#0EA5E9" transparent opacity={0.8} />
         </mesh>
       )}
-      <Billboard position={[0, 9.8, 0]}>
-        <Text fontSize={0.31} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
+      <Billboard position={[0, 6.2, 0]}>
+        <Text fontSize={0.40} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>
-        <Text fontSize={0.23} color="#6B7280" anchorX="center" anchorY="middle" position={[0, -0.43, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.30} color="#6B7280" anchorX="center" anchorY="middle" position={[0, -0.56, 0]} outlineWidth={0.02} outlineColor="white">
           ⚡ L4 — Smart Meter (Prosumer)
         </Text>
-        <Text fontSize={0.26} color={netColor} fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -0.83, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.34} color={netColor} fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -1.08, 0]} outlineWidth={0.02} outlineColor="white">
           {netLabel}
         </Text>
-        <Text fontSize={0.23} color={evColor} anchorX="center" anchorY="middle" position={[0, -1.20, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.30} color={evColor} anchorX="center" anchorY="middle" position={[0, -1.56, 0]} outlineWidth={0.02} outlineColor="white">
           {`⚡ EV: ${node.ev_charging_draw_kw?.toFixed(0)} kW`}
         </Text>
-        <Text fontSize={0.22} color={harmonicColor} anchorX="center" anchorY="middle" position={[0, -1.53, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.29} color={harmonicColor} anchorX="center" anchorY="middle" position={[0, -1.99, 0]} outlineWidth={0.02} outlineColor="white">
           {`THD: ${node.harmonic_distortion_percent?.toFixed(2)}%`}
         </Text>
       </Billboard>

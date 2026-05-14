@@ -105,17 +105,17 @@ export default function HeavyIndustryNode({ node }) {
           <meshBasicMaterial color="#0EA5E9" transparent opacity={0.8} />
         </mesh>
       )}
-      <Billboard position={[0, 11.5, 0]}>
-        <Text fontSize={0.34} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
+      <Billboard position={[0, 8.2, 0]}>
+        <Text fontSize={0.44} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}{surgeLabel}
         </Text>
-        <Text fontSize={0.25} color="#6B7280" anchorX="center" anchorY="middle" position={[0, -0.46, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.33} color="#6B7280" anchorX="center" anchorY="middle" position={[0, -0.60, 0]} outlineWidth={0.02} outlineColor="white">
           🏭 L2 — Heavy Industry (33kV direct)
         </Text>
-        <Text fontSize={0.28} color="#b91c1c" fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -0.88, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.36} color="#b91c1c" fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -1.14, 0]} outlineWidth={0.02} outlineColor="white">
           {`${loadMW} MW  (${node.heavy_machinery_load_kw?.toLocaleString()} kW)`}
         </Text>
-        <Text fontSize={0.25} color={pfColor} anchorX="center" anchorY="middle" position={[0, -1.26, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.33} color={pfColor} anchorX="center" anchorY="middle" position={[0, -1.64, 0]} outlineWidth={0.02} outlineColor="white">
           {`cos(θ) = ${node.power_factor_ratio?.toFixed(3)}`}
         </Text>
       </Billboard>

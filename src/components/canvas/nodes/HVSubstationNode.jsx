@@ -119,7 +119,7 @@ export default function HVSubstationNode({ node }) {
           <meshBasicMaterial color="#0EA5E9" transparent opacity={0.8} />
         </mesh>
       )}
-      <Billboard position={[0, 17.5, 0]}>
+      <Billboard position={[0, 10.5, 0]}>
         <Text fontSize={0.40} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>

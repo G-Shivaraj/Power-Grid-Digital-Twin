@@ -7,7 +7,7 @@ const INITIAL_NODES = {
   // ══ Layer 1: Bulk Generation ══════════════════════════════════════════════
   coalPlant: {
     id: 'coalPlant', label: 'Metro Coal Plant', type: 'thermal-generator', layer: 1,
-    position: [-35, 0, -38],
+    position: [-48, 0, -55],
     generator_rpm: 3000,
     active_power_mw: 160,
     reactive_power_mvar: 35,
@@ -19,7 +19,7 @@ const INITIAL_NODES = {
   },
   solarFarm: {
     id: 'solarFarm', label: 'North Solar Farm', type: 'renewable', layer: 1,
-    position: [-10, 0, -38],
+    position: [0, 0, -55],
     generator_rpm: 0,
     active_power_mw: 0,
     reactive_power_mvar: 0,
@@ -33,7 +33,7 @@ const INITIAL_NODES = {
   },
   gasStabilizer: {
     id: 'gasStabilizer', label: 'Gas Peaker Plant', type: 'thermal-generator', layer: 1,
-    position: [25, 0, -38],
+    position: [48, 0, -55],
     generator_rpm: 3000,
     active_power_mw: 0,
     reactive_power_mvar: 0,
@@ -48,7 +48,7 @@ const INITIAL_NODES = {
   // ══ Layer 2: City Gateways ════════════════════════════════════════════════
   hvSubstation: {
     id: 'hvSubstation', label: 'Primary HV Substation', type: 'primary-substation', layer: 2,
-    position: [0, 0, -18],
+    position: [0, 0, -28],
     transformer_oil_temp_c: 52.0,
     tap_changer_position: 0,
     incoming_voltage_kv: 220,
@@ -59,7 +59,7 @@ const INITIAL_NODES = {
   },
   heavyIndustry: {
     id: 'heavyIndustry', label: 'Heavy Industry Complex', type: 'heavy-load', layer: 2,
-    position: [-35, 0, -5],
+    position: [-48, 0, -12],
     heavy_machinery_load_kw: 28000,
     power_factor_ratio: 0.82,
     surgeModeActive: false,
@@ -70,7 +70,7 @@ const INITIAL_NODES = {
   // ══ Layer 3: Urban Veins ══════════════════════════════════════════════════
   zoneSub_north: {
     id: 'zoneSub_north', label: 'Zone Sub — North', type: 'zone-substation', layer: 3,
-    position: [0, 0, 2],
+    position: [0, 0, 0],
     feeder_breaker_status: 'CLOSED',
     phase_imbalance_percent: 1.2,
     voltage: 1.0, activePower: 0, status: 'optimal',
@@ -78,7 +78,7 @@ const INITIAL_NODES = {
   },
   zoneSub_east: {
     id: 'zoneSub_east', label: 'Zone Sub — East', type: 'zone-substation', layer: 3,
-    position: [20, 0, -2],
+    position: [32, 0, -4],
     feeder_breaker_status: 'CLOSED',
     phase_imbalance_percent: 0.9,
     voltage: 1.0, activePower: 0, status: 'optimal',
@@ -86,7 +86,7 @@ const INITIAL_NODES = {
   },
   zoneSub_west: {
     id: 'zoneSub_west', label: 'Zone Sub — West', type: 'zone-substation', layer: 3,
-    position: [-20, 0, -2],
+    position: [-32, 0, -4],
     feeder_breaker_status: 'CLOSED',
     phase_imbalance_percent: 1.5,
     voltage: 1.0, activePower: 0, status: 'optimal',
@@ -94,7 +94,7 @@ const INITIAL_NODES = {
   },
   rmu_north: {
     id: 'rmu_north', label: 'RMU North-A', type: 'rmu', layer: 3,
-    position: [0, 0, 10],
+    position: [0, 0, 22],
     fault_current_detected_amps: 0,
     isolation_switch_state: false,
     telemetry_latency_ms: 12,
@@ -103,7 +103,7 @@ const INITIAL_NODES = {
   },
   rmu_east: {
     id: 'rmu_east', label: 'RMU East-A', type: 'rmu', layer: 3,
-    position: [20, 0, 10],
+    position: [32, 0, 22],
     fault_current_detected_amps: 0,
     isolation_switch_state: false,
     telemetry_latency_ms: 8,
@@ -114,7 +114,7 @@ const INITIAL_NODES = {
   // ══ Layer 4: Intelligent Edge ═════════════════════════════════════════════
   distTransformer_alpha: {
     id: 'distTransformer_alpha', label: 'Dist. Transformer α', type: 'dist-transformer', layer: 4,
-    position: [-8, 0, 28],
+    position: [-12, 0, 45],
     ambient_temp_celsius: 28.5,
     load_saturation_percent: 55,
     estimated_lifespan_remaining_days: 4200,
@@ -123,7 +123,7 @@ const INITIAL_NODES = {
   },
   distTransformer_beta: {
     id: 'distTransformer_beta', label: 'Dist. Transformer β', type: 'dist-transformer', layer: 4,
-    position: [15, 0, 28],
+    position: [25, 0, 45],
     ambient_temp_celsius: 31.2,
     load_saturation_percent: 72,
     estimated_lifespan_remaining_days: 3650,
@@ -132,7 +132,7 @@ const INITIAL_NODES = {
   },
   smartMeter_residential: {
     id: 'smartMeter_residential', label: 'Residential Prosumers', type: 'smart-meter', layer: 4,
-    position: [-8, 0, 40],
+    position: [-12, 0, 65],
     net_metering_kw: 8500,
     ev_charging_draw_kw: 0,
     harmonic_distortion_percent: 2.1,
@@ -142,7 +142,7 @@ const INITIAL_NODES = {
   },
   smartMeter_hospital: {
     id: 'smartMeter_hospital', label: 'City Hospital', type: 'smart-meter', layer: 4,
-    position: [15, 0, 40],
+    position: [25, 0, 65],
     net_metering_kw: 4200,
     ev_charging_draw_kw: 180,
     harmonic_distortion_percent: 5.8,

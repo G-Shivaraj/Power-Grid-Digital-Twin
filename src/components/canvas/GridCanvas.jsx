@@ -1,20 +1,20 @@
-import React, { Suspense, useCallback } from 'react';
+import React, { Suspense, useCallback, useState, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, Grid, Sky } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGridStore } from '../../store/gridStore';
 
 // Node components — all 5 layers
-import CoalPlantNode        from './nodes/CoalPlantNode';
-import GasStabilizerNode    from './nodes/GasStabilizerNode';
-import SolarFarmNode        from './nodes/SolarFarmNode';
-import HVSubstationNode     from './nodes/HVSubstationNode';
-import HeavyIndustryNode    from './nodes/HeavyIndustryNode';
-import ZoneSubstationNode   from './nodes/ZoneSubstationNode';
-import RMUNode              from './nodes/RMUNode';
-import DistTransformerNode  from './nodes/DistTransformerNode';
-import SmartMeterNode       from './nodes/SmartMeterNode';
-import PowerLine            from './PowerLine';
+import CoalPlantNode from './nodes/CoalPlantNode';
+import GasStabilizerNode from './nodes/GasStabilizerNode';
+import SolarFarmNode from './nodes/SolarFarmNode';
+import HVSubstationNode from './nodes/HVSubstationNode';
+import HeavyIndustryNode from './nodes/HeavyIndustryNode';
+import ZoneSubstationNode from './nodes/ZoneSubstationNode';
+import RMUNode from './nodes/RMUNode';
+import DistTransformerNode from './nodes/DistTransformerNode';
+import SmartMeterNode from './nodes/SmartMeterNode';
+import PowerLine from './PowerLine';
 
 // ── Ground plane ──────────────────────────────────────────────────────────────
 function SolidGround() {
@@ -73,6 +73,12 @@ function Scene() {
   // Resolve node positions for power lines
   const getNodePos = (id) => nodes[id]?.position;
 
+  // Collect all node positions for exclusion zone checking in power lines
+  const allNodePositions = React.useMemo(() =>
+    Object.values(nodes).map(n => n.position).filter(Boolean),
+    [nodes]
+  );
+
   return (
     <>
       {/* Lighting */}
@@ -94,21 +100,21 @@ function Scene() {
       {/* ── Power Lines ───────────────────────────────────────────────────── */}
       {lines.map(line => {
         const fromPos = getNodePos(line.from);
-        const toPos   = getNodePos(line.to);
+        const toPos = getNodePos(line.to);
         if (!fromPos || !toPos) return null;
-        return <PowerLine key={line.id} line={line} fromPos={fromPos} toPos={toPos} />;
+        return <PowerLine key={line.id} line={line} fromPos={fromPos} toPos={toPos} nodePositions={allNodePositions} />;
       })}
 
       {/* ── Layer 1: Bulk Generation ──────────────────────────────────────── */}
       <Suspense fallback={null}>
-        <CoalPlantNode     node={nodes.coalPlant} />
-        <SolarFarmNode     node={nodes.solarFarm} />
+        <CoalPlantNode node={nodes.coalPlant} />
+        <SolarFarmNode node={nodes.solarFarm} />
         <GasStabilizerNode node={nodes.gasStabilizer} />
       </Suspense>
 
       {/* ── Layer 2: City Gateways ────────────────────────────────────────── */}
       <Suspense fallback={null}>
-        <HVSubstationNode  node={nodes.hvSubstation} />
+        <HVSubstationNode node={nodes.hvSubstation} />
         <HeavyIndustryNode node={nodes.heavyIndustry} />
       </Suspense>
 
@@ -125,34 +131,48 @@ function Scene() {
       <Suspense fallback={null}>
         <DistTransformerNode node={nodes.distTransformer_alpha} />
         <DistTransformerNode node={nodes.distTransformer_beta} />
-        <SmartMeterNode      node={nodes.smartMeter_residential} />
-        <SmartMeterNode      node={nodes.smartMeter_hospital} />
+        <SmartMeterNode node={nodes.smartMeter_residential} />
+        <SmartMeterNode node={nodes.smartMeter_hospital} />
       </Suspense>
 
       {/* Sky & atmosphere */}
       <Sky sunPosition={[100, 30, 100]} turbidity={0.6} rayleigh={0.4} />
       <Environment preset="city" />
-      <fog attach="fog" args={['#D9E8F5', 120, 320]} />
+      <fog attach="fog" args={['#D9E8F5', 150, 400]} />
     </>
   );
 }
 
 // ── Canvas root ───────────────────────────────────────────────────────────────
 export default function GridCanvas() {
+  const [panningMode, setPanningMode] = useState(false);
+  const controlsRef = useRef();
+
+  const handleDoubleClick = () => setPanningMode(true);
+  const handlePointerUp = () => setPanningMode(false);
+
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full" onDoubleClick={handleDoubleClick} onPointerUp={handlePointerUp}>
       <Canvas
         shadows
-        camera={{ position: [20, 28, 40], fov: 50 }}
+        camera={{ position: [30, 40, 60], fov: 50 }}
         gl={{ antialias: true, alpha: false }}
         onCreated={({ gl }) => { gl.setClearColor('#D9E8F5'); }}
       >
         <Scene />
         <OrbitControls
+          ref={controlsRef}
           makeDefault
           minDistance={8}
-          maxDistance={200}
+          maxDistance={300}
           maxPolarAngle={Math.PI / 2.1}
+          enableRotate={!panningMode}
+          enablePan={panningMode}
+          mouseButtons={{
+            LEFT: panningMode ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: panningMode ? THREE.MOUSE.ROTATE : THREE.MOUSE.PAN,
+          }}
         />
       </Canvas>
     </div>

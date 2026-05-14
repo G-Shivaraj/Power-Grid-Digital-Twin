@@ -97,17 +97,17 @@ export default function ZoneSubstationNode({ node }) {
           <meshBasicMaterial color="#0EA5E9" transparent opacity={0.8} />
         </mesh>
       )}
-      <Billboard position={[0, 14.0, 0]}>
-        <Text fontSize={0.34} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
+      <Billboard position={[0, 9.2, 0]}>
+        <Text fontSize={0.44} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>
-        <Text fontSize={0.26} color="#6B7280" anchorX="center" anchorY="middle" position={[0, -0.46, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.34} color="#6B7280" anchorX="center" anchorY="middle" position={[0, -0.60, 0]} outlineWidth={0.02} outlineColor="white">
           ⚡ L3 — Zone Sub (33kV/11kV)
         </Text>
-        <Text fontSize={0.28} color={breakerLabelColor} fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -0.88, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.36} color={breakerLabelColor} fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -1.14, 0]} outlineWidth={0.02} outlineColor="white">
           {`Breaker: ${node.feeder_breaker_status}`}
         </Text>
-        <Text fontSize={0.25} color={imbalanceColor} anchorX="center" anchorY="middle" position={[0, -1.28, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.33} color={imbalanceColor} anchorX="center" anchorY="middle" position={[0, -1.66, 0]} outlineWidth={0.02} outlineColor="white">
           {`ΔΦ: ${node.phase_imbalance_percent?.toFixed(2)}%  V:${(node.voltage * 100).toFixed(1)}%`}
         </Text>
       </Billboard>

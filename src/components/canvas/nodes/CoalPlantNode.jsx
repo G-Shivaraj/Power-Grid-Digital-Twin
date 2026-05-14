@@ -92,14 +92,14 @@ export default function CoalPlantNode({ node }) {
           <meshBasicMaterial color="#0EA5E9" transparent opacity={0.8} />
         </mesh>
       )}
-      <Billboard position={[0, 14.0, 0]}>
-        <Text fontSize={0.38} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
+      <Billboard position={[0, 9.8, 0]}>
+        <Text fontSize={0.49} color="#0f172a" fontWeight="bold" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="white">
           {node.label}
         </Text>
-        <Text fontSize={0.28} color="#6B7280" anchorX="center" anchorY="middle" position={[0, -0.50, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.36} color="#6B7280" anchorX="center" anchorY="middle" position={[0, -0.65, 0]} outlineWidth={0.02} outlineColor="white">
           ⚡ L1 — Bulk Generation
         </Text>
-        <Text fontSize={0.30} color={rpmColor} fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -0.95, 0]} outlineWidth={0.02} outlineColor="white">
+        <Text fontSize={0.39} color={rpmColor} fontWeight="bold" anchorX="center" anchorY="middle" position={[0, -1.24, 0]} outlineWidth={0.02} outlineColor="white">
           {`${node.generator_rpm?.toFixed(0)} RPM | ${node.active_power_mw?.toFixed(1)} MW`}
         </Text>
       </Billboard>
