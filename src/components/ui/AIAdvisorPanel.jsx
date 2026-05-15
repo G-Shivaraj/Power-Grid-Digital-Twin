@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { useGridStore } from '../../store/gridStore';
-import { Bot, Zap, CheckCircle, AlertTriangle, Loader, Cpu } from 'lucide-react';
+import { Bot, CheckCircle, AlertTriangle, Loader, Cpu, PlayCircle } from 'lucide-react';
+import { ALL_CASES } from '../../engine/caseDefinitions';
 
 function MessageBubble({ msg }) {
   const typeClass = {
@@ -42,89 +43,124 @@ function MessageBubble({ msg }) {
 }
 
 export default function AIAdvisorPanel() {
-  const aiAdvisor = useGridStore(s => s.aiAdvisor);
-  const simulation = useGridStore(s => s.simulation);
-  const clearAIMessages = useGridStore(s => s.clearAIMessages);
+  const { aiAdvisor, simulation, activeCases, pendingActions, appliedActions, applyAction, clearAIMessages } = useGridStore();
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [aiAdvisor.messages, aiAdvisor.isAnalyzing]);
+  }, [aiAdvisor.messages, aiAdvisor.isAnalyzing, pendingActions]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-slate-50/50">
       {/* Header */}
-      <div className="flex-shrink-0 px-4 py-3 border-b border-grid-border bg-white/80">
+      <div className="flex-shrink-0 px-4 py-3 border-b border-slate-200 bg-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-gradient-to-br from-violet-500 to-purple-700 rounded-lg flex items-center justify-center">
-              <Bot size={14} className="text-white" />
+            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-inner">
+              <Bot size={16} className="text-white" />
             </div>
             <div>
-              <p className="text-sm font-bold text-grid-text">AI Operations Advisor</p>
-              <p className="text-xs text-grid-muted">Powered by gpt-4o-mini</p>
+              <p className="text-sm font-bold text-slate-800 tracking-tight">AI Operations Advisor</p>
+              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Powered by gpt-4o-mini</p>
             </div>
           </div>
-          <div className={`w-2 h-2 rounded-full ${simulation.faultActive ? 'bg-red-500 alarm-pulse' : aiAdvisor.isAnalyzing ? 'bg-amber-400 animate-pulse' : 'bg-green-400'}`} />
+          <div className={`w-2.5 h-2.5 rounded-full shadow-sm ${activeCases.length > 0 ? 'bg-red-500 alarm-pulse' : aiAdvisor.isAnalyzing ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
         </div>
       </div>
 
-      {/* Status strip */}
-      {simulation.faultActive && !aiAdvisor.isAnalyzing && aiAdvisor.messages.length === 0 && (
-        <div className="flex-shrink-0 flex items-center gap-2 mx-3 mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 font-semibold animate-pulse-fast">
-          <AlertTriangle size={12} />
-          FAULT DETECTED — Analyzing grid state...
-        </div>
-      )}
-
-      {/* Messages */}
+      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {aiAdvisor.messages.length === 0 && !aiAdvisor.isAnalyzing && (
-          <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-8">
-            <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center">
-              <Zap size={22} className="text-slate-400" />
-            </div>
+        {aiAdvisor.messages.length === 0 && !aiAdvisor.isAnalyzing && activeCases.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-8 opacity-60">
+            <Bot size={32} className="text-slate-300" />
             <div>
-              <p className="text-sm font-semibold text-slate-500">AI Advisor on Standby</p>
-              <p className="text-xs text-slate-400 mt-1">Trigger a scenario (Surge/Cyber)<br />or wait for a grid fault event.</p>
+              <p className="text-sm font-semibold text-slate-500">System Nominal</p>
+              <p className="text-xs text-slate-400 mt-1">Monitoring grid telemetry for anomalies.</p>
             </div>
           </div>
         )}
 
-        {aiAdvisor.messages.map(msg => (
-          <MessageBubble key={msg.id} msg={msg} />
-        ))}
+        {/* Standard messages log */}
+        {aiAdvisor.messages.map(msg => <MessageBubble key={msg.id} msg={msg} />)}
 
-        {/* Typing indicator */}
+        {/* Case Analysis indicator */}
         {aiAdvisor.isAnalyzing && (
-          <div className="chat-message chat-message-ai">
+          <div className="chat-message chat-message-ai border-l-2 border-l-indigo-400">
             <div className="flex items-center gap-2">
-              <Loader size={13} className="text-slate-500 animate-spin" />
-              <span className="text-xs text-slate-500">Analyzing grid telemetry...</span>
+              <Loader size={14} className="text-indigo-500 animate-spin" />
+              <span className="text-xs font-medium text-slate-600">Synthesizing telemetry & generating solutions...</span>
             </div>
           </div>
         )}
+
+        {/* Actionable Recommendations */}
+        {pendingActions.map((actionGroup, idx) => {
+          const caseDef = ALL_CASES.find(c => c.id === actionGroup.caseId);
+          if (!caseDef) return null;
+          
+          return (
+            <div key={`pending-${idx}`} className="bg-white border border-indigo-100 rounded-xl shadow-sm overflow-hidden animate-slide-up">
+              <div className="bg-indigo-50 px-3 py-2 border-b border-indigo-100 flex items-center gap-2">
+                <Cpu size={14} className="text-indigo-600" />
+                <span className="text-xs font-bold text-indigo-900">Recommended Actions for: {caseDef.title}</span>
+              </div>
+              <div className="p-2 space-y-2">
+                {actionGroup.actions.map(actionId => {
+                  const actionDef = caseDef.availableActions.find(a => a.id === actionId);
+                  if (!actionDef) return null;
+
+                  const isApplied = appliedActions.some(a => a.id === actionId);
+
+                  return (
+                    <button
+                      key={actionId}
+                      onClick={() => applyAction(actionDef, actionGroup.caseId)}
+                      disabled={isApplied}
+                      className={`w-full text-left p-2.5 rounded-lg border text-xs transition-all ${
+                        isApplied 
+                          ? 'bg-emerald-50 border-emerald-200 opacity-80 cursor-not-allowed' 
+                          : 'bg-white border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 hover:shadow-sm active:scale-[0.98]'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className="text-base mt-0.5">{actionDef.icon}</span>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-center mb-0.5">
+                            <span className={`font-bold ${isApplied ? 'text-emerald-700' : 'text-slate-800'}`}>
+                              {actionDef.label}
+                            </span>
+                            {isApplied && <CheckCircle size={12} className="text-emerald-500" />}
+                          </div>
+                          <p className={`leading-snug ${isApplied ? 'text-emerald-600/80' : 'text-slate-500'}`}>
+                            {actionDef.description}
+                          </p>
+                          {!isApplied && (
+                            <div className="mt-1.5 pt-1.5 border-t border-slate-100 flex gap-1 text-[10px] text-slate-400 font-medium">
+                              <span className="text-indigo-400">↳ Expected:</span>
+                              <span>{actionDef.expectedOutcome}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Action area */}
-      <div className="flex-shrink-0 p-3 border-t border-grid-border bg-white/50 space-y-2">
-        {/* Recommendation display */}
-        {aiAdvisor.recommendation && (
-          <div className="w-full py-2 px-3 bg-sky-50 border border-sky-200 text-sky-800 text-xs font-semibold rounded-xl">
-            <p className="font-bold text-sky-700 mb-0.5">📋 AI Recommendation:</p>
-            <p className="text-xs leading-relaxed">{aiAdvisor.recommendation}</p>
-          </div>
-        )}
-
-        {/* Clear button */}
+      {/* Footer controls */}
+      <div className="flex-shrink-0 p-3 border-t border-slate-200 bg-white">
         {aiAdvisor.messages.length > 0 && (
           <button
             onClick={clearAIMessages}
-            className="w-full py-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+            className="w-full py-1.5 rounded-md text-xs font-medium text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
           >
-            Clear conversation
+            Clear Session History
           </button>
         )}
       </div>

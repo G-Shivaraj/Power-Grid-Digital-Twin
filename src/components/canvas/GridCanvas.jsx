@@ -14,6 +14,7 @@ import ZoneSubstationNode from './nodes/ZoneSubstationNode';
 import RMUNode from './nodes/RMUNode';
 import DistTransformerNode from './nodes/DistTransformerNode';
 import SmartMeterNode from './nodes/SmartMeterNode';
+import GenericNode from './nodes/GenericNode';
 import PowerLine from './PowerLine';
 
 // ── Ground plane ──────────────────────────────────────────────────────────────
@@ -64,7 +65,7 @@ function GridDecoration() {
 
 // ── Scene root ────────────────────────────────────────────────────────────────
 function Scene() {
-  const { nodes, lines, selectNode } = useGridStore();
+  const { nodes, lines, selectNode, dynamicNodes, dynamicLines } = useGridStore();
 
   const handleBackgroundClick = useCallback(() => {
     selectNode(null);
@@ -73,11 +74,14 @@ function Scene() {
   // Resolve node positions for power lines
   const getNodePos = (id) => nodes[id]?.position;
 
-  // Collect all node positions for exclusion zone checking in power lines
+  // Collect all node positions (static + dynamic) for exclusion zone checking
   const allNodePositions = React.useMemo(() =>
-    Object.values(nodes).map(n => n.position).filter(Boolean),
-    [nodes]
+    [...Object.values(nodes), ...Object.values(dynamicNodes)].map(n => n.position).filter(Boolean),
+    [nodes, dynamicNodes]
   );
+
+  const allNodes = React.useMemo(() => ({ ...nodes, ...dynamicNodes }), [nodes, dynamicNodes]);
+  const allLines = React.useMemo(() => [...lines, ...dynamicLines], [lines, dynamicLines]);
 
   return (
     <>
@@ -97,10 +101,10 @@ function Scene() {
         <meshBasicMaterial />
       </mesh>
 
-      {/* ── Power Lines ───────────────────────────────────────────────────── */}
-      {lines.map(line => {
-        const fromPos = getNodePos(line.from);
-        const toPos = getNodePos(line.to);
+      {/* ── Power Lines (static + dynamic) ────────────────────────────────── */}
+      {allLines.map(line => {
+        const fromPos = allNodes[line.from]?.position;
+        const toPos   = allNodes[line.to]?.position;
         if (!fromPos || !toPos) return null;
         return <PowerLine key={line.id} line={line} fromPos={fromPos} toPos={toPos} nodePositions={allNodePositions} />;
       })}
@@ -133,6 +137,13 @@ function Scene() {
         <DistTransformerNode node={nodes.distTransformer_beta} />
         <SmartMeterNode node={nodes.smartMeter_residential} />
         <SmartMeterNode node={nodes.smartMeter_hospital} />
+      </Suspense>
+
+      {/* ── Dynamic Nodes (case-engine deployed) ──────────────────────────── */}
+      <Suspense fallback={null}>
+        {Object.values(dynamicNodes).map(node => (
+          <GenericNode key={node.id} node={node} />
+        ))}
       </Suspense>
 
       {/* Sky & atmosphere */}

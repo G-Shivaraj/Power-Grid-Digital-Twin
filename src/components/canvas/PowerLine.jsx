@@ -11,10 +11,10 @@ const STATUS_LINE_COLORS = {
 
 // Voltage-level visual config
 const VOLTAGE_CONFIG = {
-  hv:   { tubeRadius: 0.035, towerScale: 4.5, wireElevation: 4.2, particleSize: 0.11, particleCount: 8, wireColor: '#000000' },
-  sub:  { tubeRadius: 0.022, towerScale: 3.2, wireElevation: 2.9, particleSize: 0.09, particleCount: 7, wireColor: '#000000' },
+  hv: { tubeRadius: 0.035, towerScale: 4.5, wireElevation: 4.2, particleSize: 0.11, particleCount: 8, wireColor: '#000000' },
+  sub: { tubeRadius: 0.022, towerScale: 3.2, wireElevation: 2.9, particleSize: 0.09, particleCount: 7, wireColor: '#000000' },
   dist: { tubeRadius: 0.015, towerScale: 2.2, wireElevation: 2.0, particleSize: 0.07, particleCount: 5, wireColor: '#000000' },
-  lv:   { tubeRadius: 0.010, towerScale: 0,   wireElevation: 1.2, particleSize: 0.055,particleCount: 4, wireColor: '#000000' },
+  lv: { tubeRadius: 0.010, towerScale: 0, wireElevation: 1.2, particleSize: 0.055, particleCount: 4, wireColor: '#000000' },
 };
 
 // Exclusion radius per component type — towers/poles must not be placed within
@@ -31,11 +31,11 @@ function PowerlineTower({ position, rotation = 0, scale = 3.2 }) {
         child.receiveShadow = true;
         if (child.material) {
           child.material = child.material.clone();
-          child.material.color = new THREE.Color('#d1d5db');
-          child.material.emissive = new THREE.Color('#d1d5db');
-          child.material.emissiveIntensity = 0.1;
-          child.material.metalness = 0.7;
-          child.material.roughness = 0.3;
+          child.material.color = new THREE.Color('#f8fafc');
+          child.material.emissive = new THREE.Color('#f8fafc');
+          child.material.emissiveIntensity = 0.15;
+          child.material.metalness = 0.2;
+          child.material.roughness = 0.7;
         }
       }
     });
@@ -44,9 +44,11 @@ function PowerlineTower({ position, rotation = 0, scale = 3.2 }) {
 
   return (
     <group position={position} rotation={[0, rotation, 0]}>
-      <Resize scale={scale}>
-        <primitive object={clonedScene} />
-      </Resize>
+      <group scale={[1.35, 1.0, 1.35]}>
+        <Resize scale={scale}>
+          <primitive object={clonedScene} />
+        </Resize>
+      </group>
     </group>
   );
 }
@@ -66,9 +68,11 @@ function WoodenPole({ position, rotation = 0 }) {
 
   return (
     <group position={position} rotation={[0, rotation, 0]}>
-      <Resize scale={2.5}>
-        <primitive object={clonedScene} />
-      </Resize>
+      <group scale={[1.35, 1.0, 1.35]}>
+        <Resize scale={2.5}>
+          <primitive object={clonedScene} />
+        </Resize>
+      </group>
     </group>
   );
 }
@@ -102,31 +106,31 @@ export default function PowerLine({ line, fromPos, toPos, nodePositions = [] }) 
 
   const curve = useMemo(() => {
     const startFlat = new THREE.Vector3(...fromPos);
-    const endFlat   = new THREE.Vector3(...toPos);
+    const endFlat = new THREE.Vector3(...toPos);
     startFlat.y = 0; endFlat.y = 0;
-    
+
     // v0: Start connection point dipping downwards to touch the source entity directly
     const v0 = new THREE.Vector3(startFlat.x, 0.6, startFlat.z);
-    
+
     // v1: First control point rises smoothly to the utility pole crossarm elevation
     const v1 = startFlat.clone().lerp(endFlat, 0.2);
     v1.y = cfg.wireElevation + (isRingTie ? 0.2 : 0);
-    
+
     // v2: Second control point maintains crossarm elevation across the entire middle span
     const v2 = startFlat.clone().lerp(endFlat, 0.8);
     v2.y = cfg.wireElevation + (isRingTie ? 0.2 : 0);
-    
+
     // v3: End connection point dipping downwards to touch destination entity directly
     const v3 = new THREE.Vector3(endFlat.x, 0.6, endFlat.z);
-    
+
     return new THREE.CubicBezierCurve3(v0, v1, v2, v3);
   }, [fromPos[0], fromPos[2], toPos[0], toPos[2], cfg.wireElevation, isRingTie]);
 
   const towerData = useMemo(() => {
     if (cfg.towerScale === 0) return []; // LV lines have no towers
     const from = new THREE.Vector3(...fromPos);
-    const to   = new THREE.Vector3(...toPos);
-    const dir  = new THREE.Vector3().subVectors(to, from);
+    const to = new THREE.Vector3(...toPos);
+    const dir = new THREE.Vector3().subVectors(to, from);
     const rotation = Math.atan2(dir.x, dir.z);
     const dist = dir.length();
     if (dist < 4) return [];

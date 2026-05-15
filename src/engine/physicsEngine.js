@@ -108,7 +108,19 @@ function computeHarmonics(baseHarmonic, evMW, timeOfDay) {
 export function runPhysicsTick(state) {
   const { nodes, lines, simulation } = state;
   const { timeOfDay, tick, surgeEventActive } = simulation;
-  const RF = 5; // voltage drop scaling factor (tuned for 5-layer city grid)
+  const RF = 5;
+
+  // ─── Dynamic effects from case engine ────────────────────────────────────
+  const fx = state.dynamicEffects || {};
+  const gasPeakerForced  = fx.voltage_collapse?.gasPeakerActive || fx.solar_ramp?.gasPeakerActive || fx.gen_load_imbalance?.gasPeakerActive || false;
+  const capacitorSupport = fx.voltage_collapse?.capacitorBank ? 20 : 0;    // MVAR
+  const harmonicFilter   = fx.harmonic_distortion?.harmonicFilter ? 4.0 : 0; // THD reduction %
+  const forcedCooling    = fx.oil_overheat?.forcedCooling ? 0.12 : 0;       // cooling factor
+  const demandRespFactor = (fx.transformer_overload?.demandResponse || fx.gen_load_imbalance?.demandResponse || fx.oil_overheat?.loadReduced) ? 0.85 : 1.0;
+  const industryLimit    = fx.industrial_surge?.loadLimiter ? 30 : null;    // MW cap
+  const evCurtailed      = fx.harmonic_distortion?.evCurtailed ? true : false;
+  const phaseBalancer    = fx.phase_imbalance?.phaseBalancer ? 0.5 : 1.0;   // imbalance multiplier
+  const parallelTX       = fx.transformer_overload?.parallelTransformer ? 0.55 : 1.0; // load share
 
   // ─── Layer 1: Generation ──────────────────────────────────────────────────
   const sf    = nodes.solarFarm;
@@ -123,22 +135,24 @@ export function runPhysicsTick(state) {
   const hi     = nodes.heavyIndustry;
 
   const timeVariation = 1 + 0.28 * Math.sin(Math.PI * (timeOfDay - 7) / 12);
-  const resDemandBase = smRes.baseDemand * timeVariation;
-  const evMW = computeEVChargingDraw(timeOfDay);
+  const resDemandBase = smRes.baseDemand * timeVariation * demandRespFactor;
+  const evMW = evCurtailed ? 0 : computeEVChargingDraw(timeOfDay);
   const resDemand = resDemandBase + evMW;
-  const hospDemand = smHosp.baseDemand * (1 + 0.06 * Math.sin(Math.PI * timeOfDay / 12));
+  const hospDemand = smHosp.baseDemand * (1 + 0.06 * Math.sin(Math.PI * timeOfDay / 12)) * demandRespFactor;
 
   const industryBaseMW = hi.heavy_machinery_load_kw / 1000;
-  const industryDemand = surgeEventActive ? industryBaseMW * 1.65 : industryBaseMW;
+  let industryDemand = surgeEventActive ? industryBaseMW * 1.65 : industryBaseMW;
+  if (industryLimit !== null) industryDemand = Math.min(industryDemand, industryLimit);
   const industryPF = hi.power_factor_ratio;
   const industryQ  = industryDemand * Math.tan(Math.acos(Math.max(0.5, Math.min(0.999, industryPF))));
 
   const totalLoad = resDemand + hospDemand + industryDemand;
 
-  // Coal fills the gap; gas picks up overflow
+  // Coal fills the gap; gas picks up overflow (or forced by case engine)
   const coalRequired = Math.max(0, totalLoad - solarMW);
   const coalMW = Math.min(coal.maxCapacity, coalRequired);
-  const gasMW  = Math.max(0, coalRequired - coal.maxCapacity);
+  const gasMWBase = Math.max(0, coalRequired - coal.maxCapacity);
+  const gasMW  = gasPeakerForced ? Math.max(gasMWBase, Math.min(gas.spinning_reserve_mw ?? 60, totalLoad * 0.3)) : gasMWBase;
   const totalGeneration = solarMW + coalMW + gasMW;
 
   const imbalancePct = totalLoad > 0 ? (totalLoad - totalGeneration) / totalLoad : 0;
@@ -154,7 +168,9 @@ export function runPhysicsTick(state) {
   const hvLoad = totalLoad;
   const hvLoadRatio = Math.min(2.0, hvLoad / S_BASE);
 
-  const oilTemp = computeOilTemp(hvLoadRatio, hvSub.transformer_oil_temp_c);
+  const oilTempBase = computeOilTemp(hvLoadRatio, hvSub.transformer_oil_temp_c);
+  // Apply forced cooling effect
+  const oilTemp = forcedCooling > 0 ? parseFloat(Math.max(65, oilTempBase - forcedCooling * 50).toFixed(1)) : oilTempBase;
   const tapPos  = computeTapPosition(hvLoadRatio);
 
   // Cyber intrusion: low probability event under stress
@@ -179,11 +195,13 @@ export function runPhysicsTick(state) {
   const eastLoad  = hospDemand * 0.80 + resDemand * 0.25;
   const westLoad  = industryDemand * 0.55 + resDemand * 0.25;
 
-  const vNorth = parseFloat(Math.max(0.60, vHV - (northLoad / S_BASE) * R_north * RF).toFixed(4));
+  // Capacitor bank provides reactive support — boosts voltage at North zone
+  const capBoost = capacitorSupport > 0 ? (capacitorSupport / S_BASE) * 0.015 : 0;
+  const vNorth = parseFloat(Math.max(0.60, vHV - (northLoad / S_BASE) * R_north * RF + capBoost).toFixed(4));
   const vEast  = parseFloat(Math.max(0.60, vHV - (eastLoad  / S_BASE) * R_east  * RF).toFixed(4));
   const vWest  = parseFloat(Math.max(0.60, vHV - (westLoad  / S_BASE) * R_west  * RF).toFixed(4));
 
-  const northPhase = computePhaseImbalance(northLoad / 80, timeOfDay);
+  const northPhase = computePhaseImbalance(northLoad / 80, timeOfDay) * phaseBalancer;
   const eastPhase  = computePhaseImbalance(eastLoad  / 80, timeOfDay);
   const westPhase  = computePhaseImbalance(westLoad  / 80, timeOfDay);
 
@@ -225,11 +243,11 @@ export function runPhysicsTick(state) {
   const netMeteringKW = solarExportMW > 0.5
     ? -(solarExportMW * 1000 * 0.6)
     : smRes.baseDemand * 1000 * 0.7;
-  const harmonicRes  = computeHarmonics(2.1, evMW, timeOfDay);
+  const harmonicRes  = Math.max(0, computeHarmonics(2.1, evMW, timeOfDay) - harmonicFilter);
   const harmonicHosp = computeHarmonics(5.8, 0.18, timeOfDay);
 
-  // Load saturation on distribution transformers
-  const alphaLoadSat = parseFloat(Math.min(150, (resDemand / 20) * 100).toFixed(1));
+  // Load saturation — parallel transformer halves the effective load
+  const alphaLoadSat = parseFloat(Math.min(150, (resDemand / 20) * 100 * parallelTX).toFixed(1));
   const betaLoadSat  = parseFloat(Math.min(150, (hospDemand / 14) * 100).toFixed(1));
 
   // Lifespan decay
@@ -401,6 +419,7 @@ export function runPhysicsTick(state) {
     'north-rmu-n':   { flow: northLoad,    dir: 1 },
     'east-rmu-e':    { flow: eastLoad,     dir: 1 },
     'ring-tie':      { flow: selfHealingActive ? northLoad * 0.6 : 0, dir: selfHealingActive ? -1 : 0 },
+    'rmu-ring-tie':  { flow: selfHealingActive ? northLoad * 0.4 : 0, dir: selfHealingActive ? -1 : 0 },
     'rmu-n-alpha':   { flow: resDemand,    dir: 1 },
     'rmu-e-beta':    { flow: hospDemand,   dir: 1 },
     'alpha-res':     { flow: resDemand,    dir: 1 },

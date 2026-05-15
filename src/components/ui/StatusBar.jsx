@@ -18,10 +18,11 @@ export default function StatusBar() {
   const nodes        = useGridStore(s => s.nodes);
   const isFullscreen = useGridStore(s => s.isFullscreen);
   const toggleFullscreen = useGridStore(s => s.toggleFullscreen);
+  const activeCases  = useGridStore(s => s.activeCases);
 
-  const faultActive = simulation.faultActive;
+  const faultActive = simulation.faultActive || activeCases.length > 0;
   const selfHealing = simulation.selfHealingActive;
-  const cyberActive = simulation.cyberIntrusionActive || nodes.hvSubstation?.cyber_intrusion_flag;
+  const cyberActive = simulation.cyberIntrusionActive || nodes.hvSubstation?.cyber_intrusion_flag || activeCases.some(c => c.id === 'cyber_intrusion');
 
   const freqDiff   = Math.abs((simulation.gridFrequency ?? 50) - 50);
   const freqColor  = freqDiff > 0.5 ? 'text-red-600' : freqDiff > 0.2 ? 'text-amber-600' : 'text-green-600';
@@ -36,7 +37,7 @@ export default function StatusBar() {
 
   const timeStr = `${String(Math.floor(simulation.timeOfDay)).padStart(2, '0')}:${String(Math.round((simulation.timeOfDay % 1) * 60)).padStart(2, '0')}`;
 
-  const overallStatus = cyberActive ? 'CYBER ATTACK' : faultActive ? 'FAULT' : selfHealing ? 'SELF-HEALING' : 'NOMINAL';
+  const overallStatus = cyberActive ? 'CYBER ATTACK' : faultActive ? `${activeCases.length} ACTIVE CASE${activeCases.length > 1 ? 'S' : ''}` : selfHealing ? 'SELF-HEALING' : 'NOMINAL';
   const statusClass   = cyberActive
     ? 'bg-purple-600 alarm-pulse'
     : faultActive

@@ -166,6 +166,7 @@ const INITIAL_LINES = [
   { id: 'north-rmu-n', from: 'zoneSub_north', to: 'rmu_north', voltageLevel: 'dist', resistance: 0.06, thermalLimit: 40, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
   { id: 'east-rmu-e', from: 'zoneSub_east', to: 'rmu_east', voltageLevel: 'dist', resistance: 0.06, thermalLimit: 40, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
   { id: 'ring-tie', from: 'zoneSub_north', to: 'zoneSub_east', voltageLevel: 'dist', resistance: 0.05, thermalLimit: 30, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 0, isRingTie: true },
+  { id: 'rmu-ring-tie', from: 'rmu_north', to: 'rmu_east', voltageLevel: 'dist', resistance: 0.08, thermalLimit: 35, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 0, isRingTie: true },
   // Layer 3 → 4: 11kV → 400V
   { id: 'rmu-n-alpha', from: 'rmu_north', to: 'distTransformer_alpha', voltageLevel: 'dist', resistance: 0.07, thermalLimit: 25, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
   { id: 'rmu-e-beta', from: 'rmu_east', to: 'distTransformer_beta', voltageLevel: 'dist', resistance: 0.07, thermalLimit: 25, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },
@@ -205,20 +206,29 @@ export const useGridStore = create(
     },
     isFullscreen: false,
 
+    // ── Case Engine ─────────────────────────────────────────────────────────
+    activeCases: [],
+    caseHistory: [],
+    pendingActions: [],
+    appliedActions: [],
+    caseCooldowns: {},
+
+    // ── Dynamic Components ─────────────────────────────────────────────────
+    dynamicNodes: {},
+    dynamicLines: [],
+    dynamicEffects: {},
+
     toggleFullscreen: () => set(s => ({ isFullscreen: !s.isFullscreen })),
     selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
 
-    // ── Node parameter editing ──────────────────────────────────────────────
     updateNodeParameter: (nodeId, param, value) => set(state => ({
       nodes: { ...state.nodes, [nodeId]: { ...state.nodes[nodeId], [param]: value } },
     })),
 
-    // ── Simulation controls ─────────────────────────────────────────────────
     setTimeOfDay: (time) => set(s => ({ simulation: { ...s.simulation, timeOfDay: Number(time) } })),
     toggleAutoAdvance: () => set(s => ({ simulation: { ...s.simulation, autoAdvanceTime: !s.simulation.autoAdvanceTime } })),
     toggleSimulation: () => set(s => ({ simulation: { ...s.simulation, isRunning: !s.simulation.isRunning } })),
 
-    // ── Scenario toggles ────────────────────────────────────────────────────
     toggleSurgeEvent: () => set(s => ({
       simulation: { ...s.simulation, surgeEventActive: !s.simulation.surgeEventActive },
     })),
@@ -239,7 +249,6 @@ export const useGridStore = create(
       simulation: { ...s.simulation, faultActive: true, faultDetails: { type: 'rmu-isolation', location: 'rmu_north' } },
     })),
 
-    // ── Physics engine output ───────────────────────────────────────────────
     applyPhysicsResult: (result) => set(state => {
       const newHistory = [
         ...state.history.slice(-59),
@@ -280,13 +289,81 @@ export const useGridStore = create(
       },
     })),
 
-    // ── AI Advisor ──────────────────────────────────────────────────────────
     addAIMessage: (msg) => set(s => ({
       aiAdvisor: { ...s.aiAdvisor, messages: [...s.aiAdvisor.messages, { id: Date.now(), ...msg }] },
     })),
     setAIAnalyzing: (v) => set(s => ({ aiAdvisor: { ...s.aiAdvisor, isAnalyzing: v } })),
     setAIRecommendation: (rec) => set(s => ({ aiAdvisor: { ...s.aiAdvisor, recommendation: rec } })),
     clearAIMessages: () => set(s => ({ aiAdvisor: { ...s.aiAdvisor, messages: [], recommendation: null } })),
+
+    // ── Case Engine Actions ─────────────────────────────────────────────────
+    addCase: (caseObj) => set(s => ({
+      activeCases: [...s.activeCases.filter(c => c.id !== caseObj.id), caseObj],
+    })),
+
+    resolveCase: (caseId, outcome) => set(s => {
+      const resolved = s.activeCases.find(c => c.id === caseId);
+      if (!resolved) return {};
+      return {
+        activeCases: s.activeCases.filter(c => c.id !== caseId),
+        caseHistory: [...s.caseHistory.slice(-49), { ...resolved, outcome, resolvedAt: Date.now() }],
+        caseCooldowns: { ...s.caseCooldowns, [caseId]: s.simulation.tick },
+        pendingActions: s.pendingActions.filter(a => a.caseId !== caseId),
+      };
+    }),
+
+    setPendingActions: (actions) => set({ pendingActions: actions }),
+    clearPendingActions: () => set({ pendingActions: [] }),
+
+    applyAction: (action, caseId) => {
+      const state = get();
+      action.execute({ getState: get });
+      set(s => ({
+        appliedActions: [...s.appliedActions, { ...action, caseId, appliedAt: Date.now(), verifying: true }],
+        pendingActions: s.pendingActions.map(pa => 
+          pa.caseId === caseId ? { ...pa, actions: pa.actions.filter(aId => aId !== action.id) } : pa
+        ).filter(pa => pa.actions.length > 0)
+      }));
+    },
+
+    markActionVerified: (actionId, success, detail) => set(s => ({
+      appliedActions: s.appliedActions.map(a =>
+        a.id === actionId ? { ...a, verifying: false, success, verificationDetail: detail } : a
+      ),
+    })),
+
+    // ── Dynamic Component Management ────────────────────────────────────────
+    addDynamicNode: (node) => set(s => ({
+      dynamicNodes: { ...s.dynamicNodes, [node.id]: node },
+    })),
+
+    removeDynamicNode: (nodeId) => set(s => {
+      const { [nodeId]: _removed, ...rest } = s.dynamicNodes;
+      return {
+        dynamicNodes: rest,
+        dynamicLines: s.dynamicLines.filter(l => l.from !== nodeId && l.to !== nodeId),
+      };
+    }),
+
+    addDynamicLine: (line) => set(s => ({
+      dynamicLines: [...s.dynamicLines.filter(l => l.id !== line.id), line],
+    })),
+
+    removeDynamicLine: (lineId) => set(s => ({
+      dynamicLines: s.dynamicLines.filter(l => l.id !== lineId),
+    })),
+
+    setDynamicEffect: (caseId, effect) => set(s => ({
+      dynamicEffects: {
+        ...s.dynamicEffects,
+        [caseId]: { ...(s.dynamicEffects[caseId] || {}), ...effect },
+      },
+    })),
+
+    clearDynamicEffect: (caseId) => set(s => {
+      const { [caseId]: _removed, ...rest } = s.dynamicEffects;
+      return { dynamicEffects: rest };
+    }),
 
     // ── Reset ────────────────────────────────────────────────────────────────
     resetGrid: () => set({
@@ -297,6 +374,14 @@ export const useGridStore = create(
       history: [],
       isFullscreen: false,
       aiAdvisor: { messages: [], isAnalyzing: false, recommendation: null },
+      activeCases: [],
+      caseHistory: [],
+      pendingActions: [],
+      appliedActions: [],
+      caseCooldowns: {},
+      dynamicNodes: {},
+      dynamicLines: [],
+      dynamicEffects: {},
     }),
   }))
 );

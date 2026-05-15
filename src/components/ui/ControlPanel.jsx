@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGridStore } from '../../store/gridStore';
-import { Settings, Play, Pause, Clock, RefreshCw, Zap, Shield, AlertTriangle, Sun } from 'lucide-react';
+import { Settings, Play, Pause, Clock, RefreshCw, Zap, Shield, AlertTriangle, Sun, Layers, Trash2 } from 'lucide-react';
 import ExplainabilityPanel from './ExplainabilityPanel';
 import PowerFlowChart from './charts/PowerFlowChart';
 
@@ -52,9 +52,13 @@ export default function ControlPanel() {
   const toggleSurgeEvent    = useGridStore(s => s.toggleSurgeEvent);
   const triggerCyberIntrusion = useGridStore(s => s.triggerCyberIntrusion);
   const clearCyberIntrusion = useGridStore(s => s.clearCyberIntrusion);
+  const triggerRMUFault     = useGridStore(s => s.triggerRMUFault);
+  const clearFault          = useGridStore(s => s.clearFault);
   const updateNodeParameter = useGridStore(s => s.updateNodeParameter);
+  const dynamicNodes = useGridStore(s => s.dynamicNodes);
+  const removeDynamicNode = useGridStore(s => s.removeDynamicNode);
 
-  const selectedNode = selectedNodeId ? nodes[selectedNodeId] : null;
+  const selectedNode = selectedNodeId ? (nodes[selectedNodeId] || dynamicNodes[selectedNodeId]) : null;
   const timeStr = `${String(Math.floor(simulation.timeOfDay)).padStart(2, '0')}:${String(Math.round((simulation.timeOfDay % 1) * 60)).padStart(2, '0')}`;
 
   const cyberActive = simulation.cyberIntrusionActive || nodes.hvSubstation?.cyber_intrusion_flag;
@@ -124,6 +128,13 @@ export default function ControlPanel() {
             onClick={cyberActive ? clearCyberIntrusion : triggerCyberIntrusion}
             color="purple"
             icon={Shield}
+          />
+          <ScenarioButton
+            label="RMU Fault (Feeder Isolation)"
+            active={simulation.faultActive}
+            onClick={simulation.faultActive ? clearFault : triggerRMUFault}
+            color="orange"
+            icon={AlertTriangle}
           />
         </div>
         {simulation.selfHealingActive && (
@@ -195,6 +206,30 @@ export default function ControlPanel() {
           </div>
         </div>
       </div>
+
+      {/* Dynamic Components */}
+      {Object.keys(dynamicNodes).length > 0 && (
+        <div className="panel p-3 border-indigo-200 bg-indigo-50/30">
+          <SectionTitle icon={Layers} title="Deployed Solutions" />
+          <div className="space-y-1.5 mt-1">
+            {Object.values(dynamicNodes).map(node => (
+              <div key={node.id} className="flex items-center justify-between bg-white px-2 py-1.5 rounded border border-indigo-100 shadow-sm">
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-bold text-slate-700">{node.label}</span>
+                  <span className="text-[9px] text-slate-500">{node.type}</span>
+                </div>
+                <button 
+                  onClick={() => removeDynamicNode(node.id)}
+                  className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                  title="Remove Component"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Selected node telemetry */}
       {selectedNode && (
