@@ -45,7 +45,7 @@ export default function App() {
         const inCooldown = (result.tick - cooldownExp) < (caseDef.cooldownTicks || 100);
 
         // Run detection logic
-        const conditionMet = caseDef.detect(newState.nodes, newState.lines, newState.simulation);
+        const conditionMet = caseDef.detect(newState.nodes, newState.lines, newState.simulation, newState);
 
         if (conditionMet && !isActive && !inCooldown) {
           // Trigger new case

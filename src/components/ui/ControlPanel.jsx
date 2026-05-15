@@ -15,14 +15,16 @@ function SectionTitle({ icon: Icon, title, color = 'text-grid-accent' }) {
 
 function ScenarioButton({ label, active, onClick, color = 'red', icon: Icon }) {
   const activeClass = {
-    red:    'bg-red-100 text-red-700 border-red-300 shadow-inner',
-    amber:  'bg-amber-100 text-amber-700 border-amber-300 shadow-inner',
+    red: 'bg-red-100 text-red-700 border-red-300 shadow-inner',
+    amber: 'bg-amber-100 text-amber-700 border-amber-300 shadow-inner',
     purple: 'bg-purple-100 text-purple-700 border-purple-300 shadow-inner',
+    orange: 'bg-orange-100 text-orange-700 border-orange-300 shadow-inner',
   }[color];
   const idleClass = {
-    red:    'bg-red-50 text-red-700 border-red-200 hover:bg-red-100',
-    amber:  'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
+    red: 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100',
+    amber: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
     purple: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100',
+    orange: 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100',
   }[color];
 
   return (
@@ -42,18 +44,18 @@ function ScenarioButton({ label, active, onClick, color = 'red', icon: Icon }) {
 }
 
 export default function ControlPanel() {
-  const simulation    = useGridStore(s => s.simulation);
-  const selectedNodeId= useGridStore(s => s.selectedNodeId);
-  const nodes         = useGridStore(s => s.nodes);
-  const setTimeOfDay  = useGridStore(s => s.setTimeOfDay);
-  const toggleAutoAdvance   = useGridStore(s => s.toggleAutoAdvance);
-  const toggleSimulation    = useGridStore(s => s.toggleSimulation);
-  const resetGrid           = useGridStore(s => s.resetGrid);
-  const toggleSurgeEvent    = useGridStore(s => s.toggleSurgeEvent);
+  const simulation = useGridStore(s => s.simulation);
+  const selectedNodeId = useGridStore(s => s.selectedNodeId);
+  const nodes = useGridStore(s => s.nodes);
+  const setTimeOfDay = useGridStore(s => s.setTimeOfDay);
+  const toggleAutoAdvance = useGridStore(s => s.toggleAutoAdvance);
+  const toggleSimulation = useGridStore(s => s.toggleSimulation);
+  const resetGrid = useGridStore(s => s.resetGrid);
+  const toggleSurgeEvent = useGridStore(s => s.toggleSurgeEvent);
   const triggerCyberIntrusion = useGridStore(s => s.triggerCyberIntrusion);
   const clearCyberIntrusion = useGridStore(s => s.clearCyberIntrusion);
-  const triggerRMUFault     = useGridStore(s => s.triggerRMUFault);
-  const clearFault          = useGridStore(s => s.clearFault);
+  const triggerRMUFault = useGridStore(s => s.triggerRMUFault);
+  const clearFault = useGridStore(s => s.clearFault);
   const updateNodeParameter = useGridStore(s => s.updateNodeParameter);
   const dynamicNodes = useGridStore(s => s.dynamicNodes);
   const removeDynamicNode = useGridStore(s => s.removeDynamicNode);
@@ -72,9 +74,8 @@ export default function ControlPanel() {
         <div className="flex gap-2">
           <button
             onClick={toggleSimulation}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              simulation.isRunning ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-green-100 text-green-700 hover:bg-green-200'
-            }`}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${simulation.isRunning ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-green-100 text-green-700 hover:bg-green-200'
+              }`}
           >
             {simulation.isRunning ? <Pause size={12} /> : <Play size={12} />}
             {simulation.isRunning ? 'Pause' : 'Resume'}
@@ -102,9 +103,8 @@ export default function ControlPanel() {
           />
           <button
             onClick={toggleAutoAdvance}
-            className={`w-full text-xs py-1 rounded-md font-medium transition-colors ${
-              simulation.autoAdvanceTime ? 'bg-sky-100 text-sky-700' : 'bg-slate-100 text-slate-500'
-            }`}
+            className={`w-full text-xs py-1 rounded-md font-medium transition-colors ${simulation.autoAdvanceTime ? 'bg-sky-100 text-sky-700' : 'bg-slate-100 text-slate-500'
+              }`}
           >
             {simulation.autoAdvanceTime ? '⏱ Auto-advancing' : '⏸ Manual time'}
           </button>
@@ -218,7 +218,7 @@ export default function ControlPanel() {
                   <span className="text-[11px] font-bold text-slate-700">{node.label}</span>
                   <span className="text-[9px] text-slate-500">{node.type}</span>
                 </div>
-                <button 
+                <button
                   onClick={() => removeDynamicNode(node.id)}
                   className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
                   title="Remove Component"

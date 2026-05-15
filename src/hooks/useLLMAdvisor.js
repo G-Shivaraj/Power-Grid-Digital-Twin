@@ -70,80 +70,51 @@ ${JSON.stringify(telemetry, null, 2)}`;
 // ── Mock responses (one per case) ─────────────────────────────────────────────
 const MOCK_RESPONSES = {
   transformer_overload: {
-    diagnosis: 'Distribution Transformer α has reached critical load saturation above 95%, driven by peak residential demand exceeding 20 MW. Continued overloading will accelerate thermal degradation and reduce estimated lifespan below 4000 days. The 11kV/400V transformer is operating beyond its rated thermal limit.',
+    diagnosis: 'Distribution Transformer α has reached critical load saturation above 95%, driven by peak residential demand. Continued overloading will accelerate thermal degradation. The 11kV/400V transformer is operating beyond its rated thermal limit.',
     urgency: 'immediate',
-    recommendedActionIds: ['deploy_parallel_transformer', 'reduce_residential_load'],
-    expectedImprovement: 'Load saturation on Transformer α drops to ~50% and lifespan decay rate normalises.',
-  },
-  voltage_collapse: {
-    diagnosis: 'A cascading voltage collapse has been detected with minimum bus voltage below 0.85 pu at northern zone substations. The generation-load imbalance has caused governor response to lag, with Coal Plant RPM deviating from 3000. Self-healing ring tie has engaged but reactive power deficit persists.',
-    urgency: 'immediate',
-    recommendedActionIds: ['activate_gas_peaker', 'deploy_capacitor_bank'],
-    expectedImprovement: 'Voltage recovers to >0.95 pu across all buses within 3 simulation ticks after gas peaker and capacitor bank deployment.',
+    recommendedActionIds: ['deploy_parallel_transformer'],
+    expectedImprovement: 'Load saturation on Transformer α drops safely below threshold and lifespan decay rate normalises.',
   },
   industrial_surge: {
-    diagnosis: 'Heavy Industry Complex is drawing 165% of rated load during surge event, causing grid frequency to deviate below 49.85 Hz. The arc furnace reactive power demand (MVAR) has depressed the 33kV bus voltage at Zone Sub West. Power factor at 0.82 indicates significant reactive burden.',
+    diagnosis: 'Heavy Industry Complex is drawing 165% of rated load during surge event, causing grid frequency to deviate below 49.85 Hz. The arc furnace reactive power demand (MVAR) has depressed the 33kV bus voltage.',
     urgency: 'immediate',
-    recommendedActionIds: ['curtail_industry', 'deploy_load_limiter'],
-    expectedImprovement: 'Industry load returns to rated 28 MW and frequency recovers to 49.95–50.05 Hz range.',
+    recommendedActionIds: ['deploy_load_limiter'],
+    expectedImprovement: 'Industry load returns to rated levels via a hard cap, and frequency recovers to 50.0 Hz range.',
   },
   solar_ramp: {
-    diagnosis: 'North Solar Farm output has dropped below 40% of maximum capacity, creating a renewable generation shortfall. The Coal Plant is ramping to compensate but spinning reserve headroom is being consumed. Continued solar curtailment will exhaust gas peaker standby capacity.',
+    diagnosis: 'North Solar Farm output has dropped below 40% of maximum capacity, creating a renewable generation shortfall. The Coal Plant is ramping to compensate but spinning reserve headroom is being consumed.',
     urgency: 'soon',
-    recommendedActionIds: ['activate_gas_peaker_solar', 'deploy_bess'],
-    expectedImprovement: 'Generation gap bridged by BESS discharge and gas peaker, frequency remains within ±0.2 Hz of 50 Hz.',
+    recommendedActionIds: ['deploy_bess'],
+    expectedImprovement: 'Generation gap bridged instantly by BESS discharge, restoring frequency stability.',
   },
   cyber_intrusion: {
-    diagnosis: 'Unauthorized SCADA telemetry injection detected at HV Primary Substation matching a Man-in-the-Middle attack on DNP3 protocol. The attacker may spoof tap changer position readings to induce artificial voltage depression. IEC 62351 encryption layer has flagged anomalous measurement frames.',
+    diagnosis: 'Unauthorized SCADA telemetry injection detected at HV Primary Substation matching a Man-in-the-Middle attack on DNP3 protocol. IEC 62351 encryption layer has flagged anomalous measurement frames.',
     urgency: 'immediate',
-    recommendedActionIds: ['isolate_scada', 'deploy_backup_rtu'],
-    expectedImprovement: 'Cyber intrusion flag cleared, SCADA channel secured with encrypted backup RTU, operational integrity restored.',
+    recommendedActionIds: ['deploy_backup_rtu'],
+    expectedImprovement: 'Cyber intrusion flag cleared, SCADA channel secured with encrypted backup RTU.',
   },
   rmu_fault: {
-    diagnosis: 'RMU North-A has detected a fault current exceeding 2000A on the 11kV northern feeder, triggering automatic isolation. The self-healing ring tie between Zone Sub North and Zone Sub East has activated to re-energise affected customers. Physical feeder damage requires dispatch team.',
+    diagnosis: 'RMU North-A has detected a fault current exceeding 2000A on the 11kV northern feeder, triggering automatic isolation. The self-healing ring tie has activated to re-energise affected customers.',
     urgency: 'immediate',
-    recommendedActionIds: ['close_ring_tie', 'deploy_bypass_switch'],
-    expectedImprovement: 'Northern sector fully re-energised via ring path, normal radial topology restored pending physical repair.',
-  },
-  harmonic_distortion: {
-    diagnosis: 'Total Harmonic Distortion has exceeded 8% THD at the Residential Prosumer bus, driven by peak EV charging sessions between 17:00–22:00 combined with non-linear electronics loads. Hospital THD above 5% poses risk to sensitive medical equipment and violates IEEE 519 limits.',
-    urgency: 'soon',
-    recommendedActionIds: ['deploy_harmonic_filter', 'curtail_ev_charging'],
-    expectedImprovement: 'THD reduced below 5% within 2 ticks after active harmonic filter deployment and EV scheduling.',
-  },
-  oil_overheat: {
-    diagnosis: 'HV Primary Substation transformer oil temperature has exceeded 78°C, approaching the 80°C emergency threshold. Current load levels with tap changer at elevated position are generating excessive Joule heating. Continued operation above 80°C risks accelerated insulation degradation and possible thermal runaway.',
-    urgency: 'immediate',
-    recommendedActionIds: ['reduce_load_thermal', 'deploy_forced_cooling'],
-    expectedImprovement: 'Oil temperature stabilises and begins cooling below 70°C within 10 simulation ticks.',
-  },
-  gen_load_imbalance: {
-    diagnosis: 'Generation-load gap exceeds 12% with grid frequency deviating more than 0.25 Hz from 50 Hz nominal. Coal Plant governor is at maximum response rate but cannot compensate without additional generation. Gas Peaker spinning reserve provides the fastest corrective action available.',
-    urgency: 'immediate',
-    recommendedActionIds: ['activate_spinning_reserve', 'demand_response_imbalance'],
-    expectedImprovement: 'Frequency recovers to 49.95–50.05 Hz within 5 ticks after reserve activation and demand response.',
-  },
-  phase_imbalance: {
-    diagnosis: 'Phase imbalance has exceeded 4% at one or more zone substations, indicating uneven single-phase load distribution across L1, L2, L3 feeders. Evening peak residential loading with uncoordinated EV charging is the primary driver. Sustained imbalance causes negative-sequence currents damaging motor loads.',
-    urgency: 'soon',
-    recommendedActionIds: ['deploy_phase_balancer'],
-    expectedImprovement: 'Phase imbalance reduced below 2% within 5 simulation ticks after static VAR compensator deployment.',
+    recommendedActionIds: ['deploy_bypass_switch'],
+    expectedImprovement: 'Normal radial topology restored pending physical repair via physical bypass switch.',
   },
 };
 
 // ── Main export ────────────────────────────────────────────────────────────────
 export async function callLLMAdvisor(gridState, caseObj) {
-  const useMock = !API_KEY;
+  // Forced offline fallback for a flawless, token-free demo
+  const useMock = true;
 
   if (useMock) {
     await new Promise(r => setTimeout(r, 1400 + Math.random() * 600));
-    return MOCK_RESPONSES[caseObj.id] ?? MOCK_RESPONSES.voltage_collapse;
+    return MOCK_RESPONSES[caseObj.id] ?? MOCK_RESPONSES.transformer_overload;
   }
 
   // ── Real OpenRouter call ──────────────────────────────────────────────────
   const messages = [
     { role: 'system', content: buildSystemPrompt() },
-    { role: 'user',   content: buildCasePrompt(gridState, caseObj) },
+    { role: 'user', content: buildCasePrompt(gridState, caseObj) },
   ];
 
   const res = await fetch(OPENROUTER_URL, {

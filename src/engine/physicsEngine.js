@@ -120,7 +120,8 @@ export function runPhysicsTick(state) {
   const industryLimit    = fx.industrial_surge?.loadLimiter ? 30 : null;    // MW cap
   const evCurtailed      = fx.harmonic_distortion?.evCurtailed ? true : false;
   const phaseBalancer    = fx.phase_imbalance?.phaseBalancer ? 0.5 : 1.0;   // imbalance multiplier
-  const parallelTX       = fx.transformer_overload?.parallelTransformer ? 0.55 : 1.0; // load share
+  const parallelTX       = fx.transformer_overload?.parallelTransformer ? 0.35 : 1.0; // load share
+  const bessMW           = fx.solar_ramp?.bess ? 15 : 0;
 
   // ─── Layer 1: Generation ──────────────────────────────────────────────────
   const sf    = nodes.solarFarm;
@@ -149,11 +150,11 @@ export function runPhysicsTick(state) {
   const totalLoad = resDemand + hospDemand + industryDemand;
 
   // Coal fills the gap; gas picks up overflow (or forced by case engine)
-  const coalRequired = Math.max(0, totalLoad - solarMW);
+  const coalRequired = Math.max(0, totalLoad - (solarMW + bessMW));
   const coalMW = Math.min(coal.maxCapacity, coalRequired);
   const gasMWBase = Math.max(0, coalRequired - coal.maxCapacity);
   const gasMW  = gasPeakerForced ? Math.max(gasMWBase, Math.min(gas.spinning_reserve_mw ?? 60, totalLoad * 0.3)) : gasMWBase;
-  const totalGeneration = solarMW + coalMW + gasMW;
+  const totalGeneration = solarMW + bessMW + coalMW + gasMW;
 
   const imbalancePct = totalLoad > 0 ? (totalLoad - totalGeneration) / totalLoad : 0;
   const coalRPM = computeGeneratorRPM(imbalancePct, coal.generator_rpm);
@@ -213,9 +214,10 @@ export function runPhysicsTick(state) {
     : vNorth;
 
   // ─── Layer 3: RMUs ────────────────────────────────────────────────────────
-  const rmuNorthFaultCurrent = computeFaultCurrent(northLoad / 40, northFaulted);
+  const isRmuManuallyFaulted = simulation.faultActive && simulation.faultDetails?.location === 'rmu_north';
+  const rmuNorthFaultCurrent = isRmuManuallyFaulted ? nodes.rmu_north.fault_current_detected_amps : computeFaultCurrent(northLoad / 40, northFaulted);
   const rmuEastFaultCurrent  = computeFaultCurrent(eastLoad  / 40, false);
-  const rmuNorthIsolated = northFaulted;
+  const rmuNorthIsolated = isRmuManuallyFaulted ? nodes.rmu_north.isolation_switch_state : northFaulted;
   const rmuNorthLatency  = parseFloat((8 + Math.random() * 18).toFixed(1));
   const rmuEastLatency   = parseFloat((5 + Math.random() * 12).toFixed(1));
 
@@ -247,8 +249,8 @@ export function runPhysicsTick(state) {
   const harmonicHosp = computeHarmonics(5.8, 0.18, timeOfDay);
 
   // Load saturation — parallel transformer halves the effective load
-  const alphaLoadSat = parseFloat(Math.min(150, (resDemand / 20) * 100 * parallelTX).toFixed(1));
-  const betaLoadSat  = parseFloat(Math.min(150, (hospDemand / 14) * 100).toFixed(1));
+  const alphaLoadSat = parseFloat(Math.min(150, (resDemand / 25) * 100 * parallelTX).toFixed(1));
+  const betaLoadSat  = parseFloat(Math.min(150, (hospDemand / 18) * 100).toFixed(1));
 
   // Lifespan decay
   const dtAlpha = nodes.distTransformer_alpha;
@@ -259,21 +261,10 @@ export function runPhysicsTick(state) {
   // Heavy industry apparent power S = √(P²+Q²)
   const industryS = Math.sqrt(industryDemand ** 2 + industryQ ** 2);
 
-  //  // Fault detection (suppress during tick 1 warmup) ─────────────────────────
+  // Legacy fault detection disabled; controlled by Case Engine or manual trigger now.
   const allVoltages = [vHV, vNorthHealed, vEast, vWest, vAlpha, vBeta, vResidential, vHospital];
-  const faultActive = tick > 1 && (allVoltages.some(v => v < 0.88) || cyberFlag);
-  let faultDetails = null;
-  if (faultActive) {
-    const minV = Math.min(...allVoltages);
-    faultDetails = {
-      type: cyberFlag ? 'cyber-intrusion' : northFaulted ? 'voltage-collapse' : 'overload',
-      minVoltage: minV.toFixed(3),
-      selfHealingEngaged: selfHealingActive,
-      industryLoad: industryDemand.toFixed(1),
-      totalLoad: totalLoad.toFixed(1),
-      surgeActive: surgeEventActive,
-    };
-  }
+  const faultActive = simulation.faultActive || false;
+  let faultDetails = simulation.faultDetails || null;
 
   const voltageAvg = allVoltages.reduce((a, b) => a + b, 0) / allVoltages.length;
 

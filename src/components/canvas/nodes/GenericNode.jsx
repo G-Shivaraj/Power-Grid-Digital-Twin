@@ -22,7 +22,9 @@ function BESSModel() {
   const ref = useRef();
   useFrame(({ clock }) => {
     if (ref.current) ref.current.children.forEach((c, i) => {
-      c.material.emissiveIntensity = 0.6 + Math.sin(clock.getElapsedTime() * 2 + i) * 0.3;
+      if (c.material) {
+        c.material.emissiveIntensity = 0.6 + Math.sin(clock.getElapsedTime() * 2 + i) * 0.3;
+      }
     });
   });
   return (
