@@ -155,7 +155,7 @@ const INITIAL_NODES = {
 const INITIAL_LINES = [
   // Layer 1 → 2: HV Transmission Corridors (220kV)
   { id: 'hv-coal-sub', from: 'coalPlant', to: 'hvSubstation', voltageLevel: 'hv', resistance: 0.02, thermalLimit: 250, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1, conductor_temp_celsius: 45, line_sag_meters: 8.2, apparent_power_mva: 0 },
-  { id: 'hv-solar-sub', from: 'solarFarm', to: 'hvSubstation', voltageLevel: 'hv', resistance: 0.03, thermalLimit: 60, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: -1, conductor_temp_celsius: 38, line_sag_meters: 6.1, apparent_power_mva: 0 },
+  { id: 'hv-solar-sub', from: 'solarFarm', to: 'hvSubstation', voltageLevel: 'hv', resistance: 0.03, thermalLimit: 60, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1, conductor_temp_celsius: 38, line_sag_meters: 6.1, apparent_power_mva: 0 },
   { id: 'hv-gas-sub', from: 'gasStabilizer', to: 'hvSubstation', voltageLevel: 'hv', resistance: 0.025, thermalLimit: 90, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1, conductor_temp_celsius: 35, line_sag_meters: 5.5, apparent_power_mva: 0 },
   // Layer 2 → 3: Sub-Transmission (33kV)
   { id: 'sub-zone-north', from: 'hvSubstation', to: 'zoneSub_north', voltageLevel: 'sub', resistance: 0.04, thermalLimit: 80, currentFlow: 0, loadRatio: 0, status: 'optimal', powerFlowDirection: 1 },

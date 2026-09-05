@@ -401,7 +401,7 @@ export function runPhysicsTick(state) {
   // ─── Build updated lines ──────────────────────────────────────────────────
   const lineFlowMap = {
     'hv-coal-sub':   { flow: coalMW,       dir: 1,   P: coalMW,        Q: coalQ,        isHV: true },
-    'hv-solar-sub':  { flow: solarMW,      dir: solarMW > 0 ? -1 : 0, P: solarMW, Q: 0, isHV: true },
+    'hv-solar-sub':  { flow: solarMW,      dir: solarMW > 0 ? 1 : 0,  P: solarMW, Q: 0, isHV: true },
     'hv-gas-sub':    { flow: gasMW,        dir: gasMW > 0 ? 1 : 0,    P: gasMW,   Q: gasMW * 0.15, isHV: true },
     'sub-zone-north':{ flow: northLoad,    dir: 1 },
     'sub-zone-east': { flow: eastLoad,     dir: 1 },
